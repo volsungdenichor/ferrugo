@@ -13,41 +13,6 @@ void print(ferrugo::iterable<T> range)
     std::cout << std::endl << "---" << std::endl;
 }
 
-template <class T>
-ferrugo::iterable<T> repeat(T value, int count)
-{
-    return ferrugo::unfold<T, int>(
-        count,
-        [=](int n) -> ferrugo::iteration_result<std::tuple<T, int>>
-        {
-            if (n == 0)
-            {
-                return ferrugo::stop_iteration;
-            }
-            return std::tuple<T, int>{ value, n - 1 };
-        });
-}
-
-template <class T>
-ferrugo::iterable<T> single(T value)
-{
-    return repeat(std::move(value), 1);
-}
-
-ferrugo::iterable<int> range(int lo, int up)
-{
-    return ferrugo::unfold<int, int>(
-        lo,
-        [=](int n) -> ferrugo::iteration_result<std::tuple<int, int>>
-        {
-            if (n == up)
-            {
-                return ferrugo::stop_iteration;
-            }
-            return std::tuple<int, int>{ n, n + 1 };
-        });
-}
-
 ferrugo::iterable<int> collatz(int n)
 {
     using State = std::tuple<int, int>;
@@ -90,12 +55,20 @@ ferrugo::iterable<int> fibonacci(int n)
         });
 }
 
+
+
 void run()
 {
-    ferrugo::iterable<ferrugo::iterable<int>> f{ std::vector<ferrugo::iterable<int>>{
-        range(0, 3), repeat(-1, 5), ferrugo::empty<int>(), range(1000, 1005), collatz(12), single(-1), fibonacci(100) } };
+    ferrugo::iterable<ferrugo::iterable<int>> f{ std::vector<ferrugo::iterable<int>>{ ferrugo::range(0, 3),
+                                                                                      ferrugo::repeat(-1, 5),
+                                                                                      ferrugo::empty<int>(),
+                                                                                      ferrugo::range(1000, 1005),
+                                                                                      collatz(12),
+                                                                                      ferrugo::single(-1) } };
 
-    print(f.join());
+    // print(f.join());
+    // print(ferrugo::repeat("Ala").take(3));
+    print(ferrugo::range(0, 10).drop_while([](int x) { return x < 3; }).take_while([](int x) { return x < 8; }));
 }
 
 int main(int argc, char const* argv[])

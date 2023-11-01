@@ -193,7 +193,7 @@ struct take_mixin
 {
     struct implementation
     {
-        mutable int count;
+        mutable std::ptrdiff_t count;
         next_function<T> next;
 
         iteration_result<T> operator()() const
@@ -206,7 +206,7 @@ struct take_mixin
         }
     };
 
-    iterable<T> take(int count) const
+    iterable<T> take(std::ptrdiff_t count) const
     {
         return iterable<T>{ implementation{ count, static_cast<const iterable<T>&>(*this).get_next() } };
     }
@@ -217,7 +217,7 @@ struct drop_mixin
 {
     struct implementation
     {
-        mutable int count;
+        mutable std::ptrdiff_t count;
         next_function<T> next;
 
         iteration_result<T> operator()() const
@@ -230,9 +230,71 @@ struct drop_mixin
         }
     };
 
-    iterable<T> drop(int count) const
+    iterable<T> drop(std::ptrdiff_t count) const
     {
         return iterable<T>{ implementation{ count, static_cast<const iterable<T>&>(*this).get_next() } };
+    }
+};
+
+template <class T>
+struct take_while_mixin
+{
+    template <class Pred>
+    struct implementation
+    {
+        Pred pred;
+        next_function<T> next;
+
+        iteration_result<T> operator()() const
+        {
+            auto res = next();
+            if (!res || !pred(*res))
+            {
+                return stop_iteration;
+            }
+            return *res;
+        }
+    };
+
+    template <class Pred>
+    iterable<T> take_while(Pred pred) const
+    {
+        return iterable<T>{ implementation<Pred>{ std::move(pred), static_cast<const iterable<T>&>(*this).get_next() } };
+    }
+};
+
+template <class T>
+struct drop_while_mixin
+{
+    template <class Pred>
+    struct implementation
+    {
+        Pred pred;
+        next_function<T> next;
+        mutable bool init;
+
+        iteration_result<T> operator()() const
+        {
+            if (!init)
+            {
+                while (auto res = next())
+                {
+                    if (!pred(*res))
+                    {
+                        break;
+                    }
+                }
+                init = true;
+            }
+            return next();
+        }
+    };
+
+    template <class Pred>
+    iterable<T> drop_while(Pred pred) const
+    {
+        return iterable<T>{ implementation<Pred>{
+            std::move(pred), static_cast<const iterable<T>&>(*this).get_next(), false } };
     }
 };
 
@@ -281,7 +343,13 @@ struct join_mixin<iterable<T>>
 };
 
 template <class T>
-struct iterable : public transform_mixin<T>, filter_mixin<T>, take_mixin<T>, drop_mixin<T>, join_mixin<T>
+struct iterable : transform_mixin<T>,
+                  filter_mixin<T>,
+                  take_mixin<T>,
+                  drop_mixin<T>,
+                  take_while_mixin<T>,
+                  drop_while_mixin<T>,
+                  join_mixin<T>
 {
     using next_fn = next_function<T>;
 
@@ -426,6 +494,48 @@ iterable<T> unfold(S state, const std::function<iteration_result<std::tuple<T, S
         return iteration_result<T>{ std::get<0>(*result) };
     };
     return iterable<T>{ std::move(next) };
+}
+
+template <class T>
+iterable<T> repeat(T value, int count)
+{
+    return unfold<T, int>(
+        count,
+        [=](int n) -> iteration_result<std::tuple<T, int>>
+        {
+            if (n == 0)
+            {
+                return ferrugo::stop_iteration;
+            }
+            return std::tuple<T, int>{ value, n - 1 };
+        });
+}
+
+template <class T>
+iterable<T> repeat(T value)
+{
+    return iterable<T>{ [=]() -> iteration_result<T> { return value; } };
+}
+
+template <class T>
+iterable<T> single(T value)
+{
+    return repeat(std::move(value), 1);
+}
+
+template <class T>
+iterable<T> range(T lo, T up, T step = 1)
+{
+    return unfold<T, T>(
+        lo,
+        [=](T n) -> iteration_result<std::tuple<T, T>>
+        {
+            if (n >= up)
+            {
+                return stop_iteration;
+            }
+            return std::tuple<T, T>{ n, n + step };
+        });
 }
 
 }  // namespace ferrugo
