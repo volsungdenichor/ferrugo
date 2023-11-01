@@ -3,6 +3,46 @@
 #include <stdexcept>
 #include <vector>
 
+template <std::size_t I, std::size_t N>
+struct tag_t
+{
+};
+
+template <class Tuple, std::size_t N>
+void print_tuple(std::ostream& os, const Tuple& tuple, tag_t<N, N>)
+{
+}
+
+template <class Tuple, std::size_t I, std::size_t N>
+void print_tuple(std::ostream& os, const Tuple& tuple, tag_t<I, N>)
+{
+    os << (I != 0 ? ", " : "") << std::get<I>(tuple);
+    print_tuple(os, tuple, tag_t<I + 1, N>{});
+}
+
+namespace std
+{
+
+template <class... Args>
+ostream& operator<<(ostream& os, const tuple<Args...>& item)
+{
+    os << "(";
+    print_tuple(os, item, tag_t<0, sizeof...(Args)>{});
+    os << ")";
+    return os;
+}
+
+template <class F, class S>
+ostream& operator<<(ostream& os, const pair<F, S>& item)
+{
+    os << "(";
+    print_tuple(os, item, tag_t<0, 2>{});
+    os << ")";
+    return os;
+}
+
+}  // namespace std
+
 template <class T>
 void print(ferrugo::iterable<T> range)
 {
@@ -34,7 +74,7 @@ ferrugo::iterable<int> collatz(int n)
         });
 }
 
-ferrugo::iterable<int> fibonacci(int n)
+ferrugo::iterable<int> fibonacci()
 {
     using State = std::tuple<int, int>;
     return ferrugo::unfold<int, State>(
@@ -44,18 +84,11 @@ ferrugo::iterable<int> fibonacci(int n)
             const int prev = std::get<0>(state);
             const int current = std::get<1>(state);
 
-            if (prev > n)
-            {
-                return ferrugo::stop_iteration;
-            }
-
             const int next = prev + current;
 
             return std::tuple<int, State>{ prev, State{ current, next } };
         });
 }
-
-
 
 void run()
 {
@@ -66,9 +99,7 @@ void run()
                                                                                       collatz(12),
                                                                                       ferrugo::single(-1) } };
 
-    // print(f.join());
-    // print(ferrugo::repeat("Ala").take(3));
-    print(ferrugo::range(0, 10).drop_while([](int x) { return x < 3; }).take_while([](int x) { return x < 8; }));
+    print(fibonacci().take_while([](int x) { return x < 100; }).enumerate(0));
 }
 
 int main(int argc, char const* argv[])

@@ -343,13 +343,40 @@ struct join_mixin<iterable<T>>
 };
 
 template <class T>
+struct enumerate_mixin
+{
+    struct implementation
+    {
+        next_function<T> next;
+        mutable std::ptrdiff_t index;
+
+        iteration_result<std::tuple<std::ptrdiff_t, T>> operator()() const
+        {
+            auto res = next();
+            if (!res)
+            {
+                return stop_iteration;
+            }
+            return std::tuple<std::ptrdiff_t, T>{ index++, *res };
+        };
+    };
+
+    iterable<std::tuple<std::ptrdiff_t, T>> enumerate(std::ptrdiff_t start = 0) const
+    {
+        return iterable<std::tuple<std::ptrdiff_t, T>>{ implementation{ static_cast<const iterable<T>&>(*this).get_next(),
+                                                                        start } };
+    }
+};
+
+template <class T>
 struct iterable : transform_mixin<T>,
                   filter_mixin<T>,
                   take_mixin<T>,
                   drop_mixin<T>,
                   take_while_mixin<T>,
                   drop_while_mixin<T>,
-                  join_mixin<T>
+                  join_mixin<T>,
+                  enumerate_mixin<T>
 {
     using next_fn = next_function<T>;
 
