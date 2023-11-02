@@ -98,3 +98,6 @@ build/tests/cmake_install.cmake
 build/tests/CTestTestfile.cmake
 build/tests/ferrugo_ut
 build/tests/CMakeFiles/ferrugo_ut.dir/test.optional.cpp.o
+build/.cmake/api/v1/reply/index-2023-11-02T14-36-31-0304.json
+build/Testing/20231102-1436/Test.xml
+build/Testing/Temporary/LastTest_20231102-1436.log

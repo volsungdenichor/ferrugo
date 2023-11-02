@@ -123,10 +123,108 @@ using next_function = std::function<iteration_result<T>()>;
 template <class T>
 struct iterable;
 
+template <class T, class S>
+iterable<T> unfold(S state, const std::function<iteration_result<std::tuple<T, S>>(const S&)>& func)
+{
+    auto next = [=]() mutable -> iteration_result<T>
+    {
+        auto result = func(state);
+        if (!result)
+        {
+            return stop_iteration;
+        }
+        state = std::get<1>(*result);
+        return iteration_result<T>{ std::get<0>(*result) };
+    };
+    return iterable<T>{ std::move(next) };
+}
+
 template <class T>
 iterable<T> empty()
 {
     return iterable<T>{ []() { return stop_iteration; } };
+}
+
+template <class T>
+iterable<T> repeat(T value, int count)
+{
+    return unfold<T, int>(
+        count,
+        [=](int n) -> iteration_result<std::tuple<T, int>>
+        {
+            if (n == 0)
+            {
+                return ferrugo::stop_iteration;
+            }
+            return std::tuple<T, int>{ value, n - 1 };
+        });
+}
+
+template <class T>
+iterable<T> repeat(T value)
+{
+    return iterable<T>{ [=]() -> iteration_result<T> { return value; } };
+}
+
+template <class T>
+iterable<T> single(T value)
+{
+    return repeat(std::move(value), 1);
+}
+
+template <class T>
+iterable<T> range(T lo, T up, T step = 1)
+{
+    return unfold<T, T>(
+        lo,
+        [=](T n) -> iteration_result<std::tuple<T, T>>
+        {
+            if (n >= up)
+            {
+                return stop_iteration;
+            }
+            return std::tuple<T, T>{ n, n + step };
+        });
+}
+
+template <class T>
+iterable<T> iota(T start)
+{
+    return iterable<T>{ [=]() mutable -> iteration_result<T> { return start++; } };
+}
+
+template <class Func, class L, class R, class Out = decltype(std::declval<Func>()(std::declval<L>(), std::declval<R>()))>
+iterable<Out> zip_transform(Func func, iterable<L> lhs, iterable<R> rhs)
+{
+    auto lhs_next = lhs.get_next();
+    auto rhs_next = rhs.get_next();
+
+    return iterable<Out>{ [=]() -> iteration_result<Out>
+                          {
+                              auto lt = lhs_next();
+                              auto rt = rhs_next();
+                              if (lt && rt)
+                              {
+                                  return func(*std::move(lt), *std::move(rt));
+                              }
+                              return stop_iteration;
+                          } };
+}
+
+template <class L, class R>
+struct as_tuple
+{
+    template <class... Args>
+    std::tuple<L, R> operator()(Args&&... args) const
+    {
+        return std::forward_as_tuple(std::forward<Args>(args)...);
+    }
+};
+
+template <class L, class R>
+iterable<std::tuple<L, R>> zip(iterable<L> lhs, iterable<R> rhs)
+{
+    return zip_transform(as_tuple<L, R>{}, std::move(lhs), std::move(rhs));
 }
 
 template <class T>
@@ -363,8 +461,7 @@ struct enumerate_mixin
 
     iterable<std::tuple<std::ptrdiff_t, T>> enumerate(std::ptrdiff_t start = 0) const
     {
-        return iterable<std::tuple<std::ptrdiff_t, T>>{ implementation{ static_cast<const iterable<T>&>(*this).get_next(),
-                                                                        start } };
+        return zip(iota(start), static_cast<const iterable<T>&>(*this));
     }
 };
 
@@ -506,63 +603,5 @@ struct iterable : transform_mixin<T>,
         return *begin();
     }
 };
-
-template <class T, class S>
-iterable<T> unfold(S state, const std::function<iteration_result<std::tuple<T, S>>(const S&)>& func)
-{
-    auto next = [=]() mutable -> iteration_result<T>
-    {
-        auto result = func(state);
-        if (!result)
-        {
-            return stop_iteration;
-        }
-        state = std::get<1>(*result);
-        return iteration_result<T>{ std::get<0>(*result) };
-    };
-    return iterable<T>{ std::move(next) };
-}
-
-template <class T>
-iterable<T> repeat(T value, int count)
-{
-    return unfold<T, int>(
-        count,
-        [=](int n) -> iteration_result<std::tuple<T, int>>
-        {
-            if (n == 0)
-            {
-                return ferrugo::stop_iteration;
-            }
-            return std::tuple<T, int>{ value, n - 1 };
-        });
-}
-
-template <class T>
-iterable<T> repeat(T value)
-{
-    return iterable<T>{ [=]() -> iteration_result<T> { return value; } };
-}
-
-template <class T>
-iterable<T> single(T value)
-{
-    return repeat(std::move(value), 1);
-}
-
-template <class T>
-iterable<T> range(T lo, T up, T step = 1)
-{
-    return unfold<T, T>(
-        lo,
-        [=](T n) -> iteration_result<std::tuple<T, T>>
-        {
-            if (n >= up)
-            {
-                return stop_iteration;
-            }
-            return std::tuple<T, T>{ n, n + step };
-        });
-}
 
 }  // namespace ferrugo

@@ -93,12 +93,13 @@ ferrugo::iterable<int> fibonacci()
 void run()
 {
     ferrugo::iterable<ferrugo::iterable<int>> f{ std::vector<ferrugo::iterable<int>>{ ferrugo::range(0, 3),
-                                                                                      ferrugo::repeat(-1, 5),
+                                                                                      ferrugo::repeat(-1).take(5),
                                                                                       ferrugo::empty<int>(),
                                                                                       ferrugo::range(1000, 1005),
                                                                                       collatz(12),
                                                                                       ferrugo::single(-1) } };
 
+    print(f.join());
     print(fibonacci().take_while([](int x) { return x < 100; }).enumerate(0));
 }
 
