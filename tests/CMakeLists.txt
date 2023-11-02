@@ -9,7 +9,7 @@ FetchContent_MakeAvailable(googletest)
 add_library(GTest::GTest INTERFACE IMPORTED)
 target_link_libraries(GTest::GTest INTERFACE gtest_main)
 
-add_executable(ferrugo_ut test.optional.cpp)
+add_executable(ferrugo_ut optional.test.cpp iterable.test.cpp)
 
 target_link_libraries(ferrugo_ut
   PRIVATE

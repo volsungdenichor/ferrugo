@@ -561,6 +561,7 @@ struct iterable : transform_mixin<T>,
     using const_reference = reference;
     using const_pointer = pointer;
     using const_iterator = iterator;
+    using size_type = std::size_t;
 
     next_fn next_;
 
@@ -597,6 +598,12 @@ struct iterable : transform_mixin<T>,
     {
         return begin() == end();
     }
+
+    size_type size() const
+    {
+        return std::distance(begin(), end());
+    }
+
 
     const_reference front() const
     {
