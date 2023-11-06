@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <ferrugo/either.hpp>
 #include <type_traits>
 
 namespace ferrugo
@@ -20,57 +21,36 @@ class optional
 public:
     using value_type = T;
 
-    optional() : _initialized{ false }, _buffer{}
-    {
-    }
+    optional() = default;
 
     optional(none_t) : optional()
     {
     }
 
     template <class U, typename std::enable_if<std::is_constructible<value_type, U>::value, int>::type = 0>
-    optional(U&& value) : _initialized{ true }
-                        , _buffer{}
+    optional(U&& value) : storage_{ right(std::forward<U>(value)) }
     {
-        construct(std::forward<U>(value));
     }
 
-    optional(const optional& other) : _initialized{ other.has_value() }, _buffer{}
-    {
-        if (_initialized)
-        {
-            construct(*other);
-        }
-    }
-
-    optional(optional&& other) : _initialized{ other.has_value() }, _buffer{}
-    {
-        if (_initialized)
-        {
-            construct(*std::move(other));
-        }
-        other.reset();
-    }
+    optional(const optional&) = default;
+    optional(optional&&) = default;
 
     template <class U, typename std::enable_if<std::is_constructible<value_type, U>::value, int>::type = 0>
-    optional(const optional<U>& other) : _initialized{ other.has_value() }
-                                       , _buffer{}
+    optional(const optional<U>& other) : storage_{}
     {
-        if (_initialized)
+        if (other)
         {
-            construct(*other);
+            storage_.emplace(detail::in_place_t<detail::either_side::right>{}, *other);
         }
     }
 
     template <class U, typename std::enable_if<std::is_constructible<value_type, U>::value, int>::type = 0>
-    optional(optional<U>&& other) : _initialized{ other.has_value() }
-                                  , _buffer{}
+    optional(optional<U>&& other) : storage_{}
     {
-        if (_initialized)
+        if (other)
         {
-            construct(*std::move(other));
+            storage_.emplace(detail::in_place_t<detail::either_side::right>{}, *std::move(other));
         }
-        other.reset();
     }
 
     optional& operator=(optional other)
@@ -79,14 +59,9 @@ public:
         return *this;
     }
 
-    ~optional()
-    {
-        reset();
-    }
-
     bool has_value() const
     {
-        return _initialized;
+        return storage_.has_right_value();
     }
 
     explicit operator bool() const
@@ -96,68 +71,45 @@ public:
 
     const value_type& operator*() const&
     {
-        return *get_address();
+        return storage_.right_value();
     }
 
     value_type& operator*() &
     {
-        return *get_address();
+        return storage_.right_value();
     }
 
     value_type&& operator*() &&
     {
-        return std::move(*get_address());
+        return std::move(storage_).right_value();
     }
 
     const value_type* operator->() const&
     {
-        return get_address();
+        return &(*this);
     }
 
     value_type* operator->() &
     {
-        return get_address();
+        return &(*this);
     }
 
     value_type* operator->() &&
     {
-        return get_address();
-    }
-
-    void swap(optional& other)
-    {
-        std::swap(_initialized, other._initialized);
-        std::swap(_buffer, other._buffer);
+        return &(*this);
     }
 
     void reset()
     {
-        if (_initialized)
-        {
-            get_address()->~T();
-        }
-        _initialized = false;
+        storage_.reset();
     }
 
-private:
-    template <class... Args>
-    void construct(Args&&... args)
+    void swap(optional& other)
     {
-        new (get_address()) value_type{ std::forward<Args>(args)... };
+        std::swap(storage_, other.storage_);
     }
 
-    value_type* get_address()
-    {
-        return reinterpret_cast<value_type*>(&_buffer);
-    }
-
-    const value_type* get_address() const
-    {
-        return reinterpret_cast<const value_type*>(&_buffer);
-    }
-
-    bool _initialized;
-    std::array<std::uint8_t, sizeof(value_type)> _buffer;
+    either<none_t, T> storage_;
 };
 
 template <class T>

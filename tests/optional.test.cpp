@@ -38,8 +38,6 @@ TEST(optional, move_constructor)
     ferrugo::optional<std::string> opt = std::move(original);
     EXPECT_THAT(opt.has_value(), true);
     EXPECT_THAT(*opt, "abc");
-
-    EXPECT_THAT(original.has_value(), false);
 }
 
 TEST(optional, copy_constructor_from_optional_reference)

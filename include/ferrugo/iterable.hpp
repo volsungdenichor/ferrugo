@@ -1,3 +1,4 @@
+
 #pragma once
 
 #include <ferrugo/optional.hpp>
@@ -71,9 +72,9 @@ struct iteration_result<T&>
     using reference = T&;
     using pointer = T*;
 
-    optional<T&> value_;
+    T* value_;
 
-    iteration_result(T& value) : value_{ value }
+    iteration_result(T& value) : value_{ &value }
     {
     }
 
@@ -83,7 +84,7 @@ struct iteration_result<T&>
 
     explicit operator bool() const
     {
-        return value_.has_value();
+        return static_cast<bool>(value_);
     }
 
     reference operator*() const
@@ -93,7 +94,7 @@ struct iteration_result<T&>
 
     pointer operator->() const
     {
-        return value_.operator->();
+        return value_;
     }
 };
 
@@ -603,7 +604,6 @@ struct iterable : transform_mixin<T>,
     {
         return std::distance(begin(), end());
     }
-
 
     const_reference front() const
     {

@@ -1,6 +1,10 @@
+#include <ferrugo/either.hpp>
 #include <ferrugo/iterable.hpp>
+#include <ferrugo/optional.hpp>
 #include <iostream>
+#include <sstream>
 #include <stdexcept>
+#include <tuple>
 #include <vector>
 
 template <std::size_t I, std::size_t N>
@@ -43,10 +47,11 @@ ostream& operator<<(ostream& os, const pair<F, S>& item)
 
 }  // namespace std
 
+#if 0
 template <class T>
-void print(ferrugo::iterable<T> range)
+void print(const ferrugo::iterable<T>& range)
 {
-    for (const auto& item : range)
+    for (const auto item : range)
     {
         std::cout << item << " ";
     }
@@ -89,18 +94,64 @@ ferrugo::iterable<int> fibonacci()
             return std::tuple<int, State>{ prev, State{ current, next } };
         });
 }
+#endif
+
+struct to_string
+{
+    template <class T>
+    std::string operator()(const T& item) const
+    {
+        std::stringstream ss;
+        ss << item;
+        return ss.str();
+    }
+};
+
+struct source_location
+{
+    std::string file;
+    int line;
+    std::string function;
+
+    friend std::ostream& operator<<(std::ostream& os, const source_location& item)
+    {
+        return os << item.file << ":" << item.line << " in " << item.function;
+    }
+};
+
+struct size
+{
+    template <class T>
+    std::size_t operator()(const T& item) const
+    {
+        return std::distance(std::begin(item), std::end(item));
+    }
+};
+
+void assert_impl(bool condition, const std::string& expression, const source_location& loc)
+{
+    if (condition)
+    {
+        return;
+    }
+    std::stringstream ss;
+    ss << "Assertion failure: " << expression << " (" << loc << ")";
+    throw std::runtime_error{ ss.str() };
+}
+
+#define ASSERT(...) assert_impl(__VA_ARGS__, #__VA_ARGS__, source_location{ __FILE__, __LINE__, __PRETTY_FUNCTION__ })
 
 void run()
 {
-    ferrugo::iterable<ferrugo::iterable<int>> f{ std::vector<ferrugo::iterable<int>>{ ferrugo::range(0, 3),
-                                                                                      ferrugo::repeat(-1).take(5),
-                                                                                      ferrugo::empty<int>(),
-                                                                                      ferrugo::range(1000, 1005),
-                                                                                      collatz(12),
-                                                                                      ferrugo::single(-1) } };
-
-    print(f.join());
-    print(fibonacci().take_while([](int x) { return x < 100; }).enumerate(0));
+    ferrugo::optional<std::string> x = "Ala";
+    if (x)
+    {
+        std::cout << *x << std::endl;
+    }
+    else
+    {
+        std::cout << "NO" << std::endl;
+    }
 }
 
 int main(int argc, char const* argv[])
