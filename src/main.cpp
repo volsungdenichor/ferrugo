@@ -143,15 +143,8 @@ void assert_impl(bool condition, const std::string& expression, const source_loc
 
 void run()
 {
-    ferrugo::optional<std::string> x = "Ala";
-    if (x)
-    {
-        std::cout << *x << std::endl;
-    }
-    else
-    {
-        std::cout << "NO" << std::endl;
-    }
+    ferrugo::either<int, std::string> e = ferrugo::right("AAA");
+    e.match([](int x) { std::cout << x << std::endl; }, [](const std::string& x) { std::cout << x << std::endl; });
 }
 
 int main(int argc, char const* argv[])

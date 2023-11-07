@@ -35,6 +35,15 @@ struct in_place_t
 {
 };
 
+using in_place_left_t = in_place_t<either_side::left>;
+using in_place_right_t = in_place_t<either_side::right>;
+
+constexpr auto in_place_left = in_place_left_t{};
+constexpr auto in_place_right = in_place_right_t{};
+
+template <class Left, class Right, bool>
+struct either_base;
+
 template <class Left, class Right>
 struct either_base<Left, Right, true>
 {
@@ -50,14 +59,13 @@ struct either_base<Left, Right, true>
     }
 
     template <class... Args>
-    constexpr either_base(in_place_t<either_side::left>, Args&&... args)
-        : side_{ either_side::left }
-        , left_{ std::forward<Args>(args)... }
+    constexpr either_base(in_place_left_t, Args&&... args) : side_{ either_side::left }
+                                                           , left_{ std::forward<Args>(args)... }
     {
     }
 
     template <class... Args>
-    constexpr either_base(in_place_t<either_side::right>, Args&&... args)
+    constexpr either_base(in_place_right_t, Args&&... args)
         : side_{ either_side::right }
         , right_{ std::forward<Args>(args)... }
     {
@@ -81,14 +89,13 @@ struct either_base<Left, Right, false>
     }
 
     template <class... Args>
-    constexpr either_base(in_place_t<either_side::left>, Args&&... args)
-        : side_{ either_side::left }
-        , left_{ std::forward<Args>(args)... }
+    constexpr either_base(in_place_left_t, Args&&... args) : side_{ either_side::left }
+                                                           , left_{ std::forward<Args>(args)... }
     {
     }
 
     template <class... Args>
-    constexpr either_base(in_place_t<either_side::right>, Args&&... args)
+    constexpr either_base(in_place_right_t, Args&&... args)
         : side_{ either_side::right }
         , right_{ std::forward<Args>(args)... }
     {
@@ -124,7 +131,7 @@ constexpr auto right(T&& value) -> detail::wrapper<detail::either_side::right, t
 }
 
 template <class Left, class Right>
-struct either : detail::either_base<Left, Right, detail::are_trivially_destructible<Left, Right>::value>
+class either : detail::either_base<Left, Right, detail::are_trivially_destructible<Left, Right>::value>
 {
     using base_type = detail::either_base<Left, Right, detail::are_trivially_destructible<Left, Right>::value>;
 
@@ -145,27 +152,9 @@ struct either : detail::either_base<Left, Right, detail::are_trivially_destructi
         emplace_left(Left{});
     }
 
-    void reset()
-    {
-        do_reset();
-        do_init();
-    }
-
-    template <class... Args>
-    void emplace(in_place_t<detail::either_side::left>, Args&&... args)
-    {
-        do_reset();
-        this->side_ = detail::either_side::left;
-        new (&this->left_) Left{ std::forward<Args>(args)... };
-    }
-
-    template <class... Args>
-    void emplace(in_place_t<detail::either_side::right>, Args&&... args)
-    {
-        do_reset();
-        this->side_ = detail::either_side::right;
-        new (&this->right_) Right{ std::forward<Args>(args)... };
-    }
+public:
+    using left_value_type = Left;
+    using right_value_type = Right;
 
     template <detail::either_side Side, class U>
     either(const detail::wrapper<Side, U>& w) : base_type{ in_place_t<Side>{}, w.value }
@@ -177,7 +166,7 @@ struct either : detail::either_base<Left, Right, detail::are_trivially_destructi
     {
     }
 
-    either() : base_type{ in_place_t<detail::either_side::left>{}, Left{} }
+    either() : base_type{ detail::in_place_left, left_value_type{} }
     {
     }
 
@@ -185,11 +174,11 @@ struct either : detail::either_base<Left, Right, detail::are_trivially_destructi
     {
         if (other.side_ == detail::either_side::left)
         {
-            emplace(in_place_t<detail::either_side::left>{}, other.left_value());
+            emplace(detail::in_place_left, other.left_value());
         }
         else
         {
-            emplace(in_place_t<detail::either_side::right>{}, other.right_value());
+            emplace(detail::in_place_right, other.right_value());
         }
     }
 
@@ -197,11 +186,11 @@ struct either : detail::either_base<Left, Right, detail::are_trivially_destructi
     {
         if (other.side_ == detail::either_side::left)
         {
-            emplace(in_place_t<detail::either_side::left>{}, std::move(other).left_value());
+            emplace(detail::in_place_left, std::move(other).left_value());
         }
         else
         {
-            emplace(in_place_t<detail::either_side::right>{}, std::move(other).right_value());
+            emplace(detail::in_place_right, std::move(other).right_value());
         }
     }
 
@@ -211,53 +200,91 @@ struct either : detail::either_base<Left, Right, detail::are_trivially_destructi
         this->side_ = other.side_;
         if (has_left_value())
         {
-            emplace(in_place_t<detail::either_side::left>{}, std::move(other).left_value());
+            emplace(detail::in_place_left, std::move(other).left_value());
         }
         else
         {
-            emplace(in_place_t<detail::either_side::right>{}, std::move(other).right_value());
+            emplace(detail::in_place_right, std::move(other).right_value());
         }
         return *this;
     }
 
-    bool has_left_value() const
+    void reset()
+    {
+        do_reset();
+        do_init();
+    }
+
+    template <class... Args>
+    void emplace(detail::in_place_left_t, Args&&... args)
+    {
+        do_reset();
+        this->side_ = detail::either_side::left;
+        new (&this->left_) left_value_type{ std::forward<Args>(args)... };
+    }
+
+    template <class... Args>
+    void emplace(detail::in_place_right_t, Args&&... args)
+    {
+        do_reset();
+        this->side_ = detail::either_side::right;
+        new (&this->right_) right_value_type{ std::forward<Args>(args)... };
+    }
+
+    bool has_left_value() const noexcept
     {
         return this->side_ == detail::either_side::left;
     }
 
-    bool has_right_value() const
+    bool has_right_value() const noexcept
     {
         return this->side_ == detail::either_side::right;
     }
 
-    const Left& left_value() const&
+    const left_value_type& left_value() const&
     {
         return this->left_;
     }
 
-    Left& left_value() &
+    left_value_type& left_value() &
     {
         return this->left_;
     }
 
-    Left&& left_value() &&
+    left_value_type&& left_value() &&
     {
         return std::move(this->left_);
     }
 
-    const Right& right_value() const&
+    const right_value_type& right_value() const&
     {
         return this->right_;
     }
 
-    Right& right_value() &
+    right_value_type& right_value() &
     {
         return this->right_;
     }
 
-    Right&& right_value() &&
+    right_value_type&& right_value() &&
     {
         return std::move(this->right_);
+    }
+
+    template <class OnLeft, class OnRight>
+    auto match(OnLeft&& on_left, OnRight&& on_right)
+        const& -> decltype(has_left_value() ? on_left(left_value()) : on_right(right_value()))
+    {
+        return has_left_value() ? on_left(left_value()) : on_right(right_value());
+    }
+
+    template <class OnLeft, class OnRight>
+    auto match(
+        OnLeft&& on_left,
+        OnRight&&
+            on_right) && -> decltype(has_left_value() ? on_left(std::move(*this).left_value()) : on_right(std::move(*this).right_value()))
+    {
+        return has_left_value() ? on_left(std::move(*this).left_value()) : on_right(std::move(*this).right_value());
     }
 };
 
