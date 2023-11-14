@@ -1,53 +1,16 @@
 #include <ferrugo/either.hpp>
+#include <ferrugo/index_sequence.hpp>
+#include <ferrugo/invoke.hpp>
 #include <ferrugo/iterable.hpp>
+#include <ferrugo/operators.hpp>
 #include <ferrugo/optional.hpp>
+#include <ferrugo/std_ostream.hpp>
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
 #include <tuple>
 #include <vector>
 
-template <std::size_t I, std::size_t N>
-struct tag_t
-{
-};
-
-template <class Tuple, std::size_t N>
-void print_tuple(std::ostream& os, const Tuple& tuple, tag_t<N, N>)
-{
-}
-
-template <class Tuple, std::size_t I, std::size_t N>
-void print_tuple(std::ostream& os, const Tuple& tuple, tag_t<I, N>)
-{
-    os << (I != 0 ? ", " : "") << std::get<I>(tuple);
-    print_tuple(os, tuple, tag_t<I + 1, N>{});
-}
-
-namespace std
-{
-
-template <class... Args>
-ostream& operator<<(ostream& os, const tuple<Args...>& item)
-{
-    os << "(";
-    print_tuple(os, item, tag_t<0, sizeof...(Args)>{});
-    os << ")";
-    return os;
-}
-
-template <class F, class S>
-ostream& operator<<(ostream& os, const pair<F, S>& item)
-{
-    os << "(";
-    print_tuple(os, item, tag_t<0, 2>{});
-    os << ")";
-    return os;
-}
-
-}  // namespace std
-
-#if 0
 template <class T>
 void print(const ferrugo::iterable<T>& range)
 {
@@ -94,18 +57,6 @@ ferrugo::iterable<int> fibonacci()
             return std::tuple<int, State>{ prev, State{ current, next } };
         });
 }
-#endif
-
-struct to_string
-{
-    template <class T>
-    std::string operator()(const T& item) const
-    {
-        std::stringstream ss;
-        ss << item;
-        return ss.str();
-    }
-};
 
 struct source_location
 {
@@ -141,10 +92,74 @@ void assert_impl(bool condition, const std::string& expression, const source_loc
 
 #define ASSERT(...) assert_impl(__VA_ARGS__, #__VA_ARGS__, source_location{ __FILE__, __LINE__, __PRETTY_FUNCTION__ })
 
+using ferrugo::index_sequence;
+using ferrugo::index_sequence_for;
+using ferrugo::invoke;
+
+template <class Proj, class Func>
+struct proj_fn
+{
+    Proj proj;
+    Func func;
+
+    template <class... Args>
+    auto operator()(Args&&... args) const -> RETURN(invoke(proj, invoke(func, std::forward<Args>(args))...));
+};
+
+template <class Proj, class Func>
+auto proj(Proj&& proj, Func&& func) -> proj_fn<typename std::decay<Proj>::type, typename std::decay<Func>::type>
+{
+    return { std::forward<Proj>(proj), std::forward<Func>(func) };
+}
+
+template <class... Fields>
+struct tie_fn
+{
+    std::tuple<Fields...> fields;
+
+    template <class T, std::size_t... I>
+    auto call(T& item, index_sequence<I...>) const -> RETURN(std::tie(invoke(std::get<I>(fields), item)...));
+
+    template <class T>
+    auto operator()(T& item) const -> RETURN(call(item, index_sequence_for<Fields...>{}));
+};
+
+template <class... Fields>
+auto tie(Fields... fields) -> tie_fn<Fields...>
+{
+    return { { std::move(fields)... } };
+}
+
+struct Person
+{
+    std::string name;
+    int age;
+};
+
+struct to_string_fn
+{
+    template <class... Args>
+    std::string operator()(const Args&... args) const
+    {
+        std::stringstream ss;
+        const int tab[] = { (ss << args, 0)..., 0 };
+        (void)tab;
+        return ss.str();
+    }
+};
+
+constexpr auto str = to_string_fn{};
+
 void run()
 {
-    ferrugo::either<int, std::string> e = ferrugo::right("AAA");
-    e.match([](int x) { std::cout << x << std::endl; }, [](const std::string& x) { std::cout << x << std::endl; });
+    const auto a = Person{ "Adam", 10 };
+    const auto b = Person{ "Betaa", 10 };
+    const auto c = Person{ "Celina", 10 };
+
+    ASSERT(a.age > 18);
+
+    // std::cout << invoke(to_string_fn{}, tie(&Person::age, &Person::name)), a, b) << std::endl;
+    std::cout << proj(str, tie(&Person::age, &Person::name))(a, b, c) << std::endl;
 }
 
 int main(int argc, char const* argv[])
