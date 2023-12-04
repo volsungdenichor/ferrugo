@@ -267,16 +267,6 @@ public:
     {
         return std::move(this->right_);
     }
-
-    // clang-format off
-
-    template <class OnLeft, class OnRight>
-    auto match(OnLeft&& on_left, OnRight&& on_right) const& -> RETURN(has_left_value() ? on_left(left_value()) : on_right(right_value()))
-
-    template <class OnLeft, class OnRight>
-    auto match(OnLeft&& on_left, OnRight&& on_right) && -> RETURN(has_left_value() ? on_left(std::move(*this).left_value()) : on_right(std::move(*this).right_value()))
-
-    // clang-format on
 };
 
 }  // namespace detail
