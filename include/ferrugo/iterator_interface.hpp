@@ -87,9 +87,6 @@ struct pointer_proxy
     }
 };
 
-template <bool C>
-using require = typename std::enable_if<C, int>::type;
-
 template <class Impl>
 struct iterator_interface
 {
