@@ -9,6 +9,9 @@ namespace ferrugo
 template <bool B>
 using bool_constant = std::integral_constant<bool, B>;
 
+template <class...>
+struct always_false : std::false_type{};
+
 namespace detail
 {
 
