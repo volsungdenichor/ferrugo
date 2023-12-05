@@ -92,7 +92,7 @@ struct iterator_interface
 {
     Impl impl_;
 
-    template <class... Args, require<std::is_constructible<Args...>::value> = {}>
+    template <class... Args, require<std::is_constructible<Impl, Args...>::value> = {}>
     iterator_interface(Args&&... args) : impl_{ std::forward<Args>(args)... }
     {
     }
@@ -108,6 +108,7 @@ struct iterator_interface
     }
 
     static_assert(has_deref<Impl>::value, ".deref required");
+    static_assert(std::is_default_constructible<Impl>::value, "iterator_interface: default constructible Impl required");
 
     using reference = decltype(impl_.deref());
 

@@ -20,7 +20,7 @@ struct range_interface
     using difference_type = iter_difference_t<iterator>;
     using size_type = difference_type;
 
-    template <class... Args>
+    template <class... Args, require<std::is_constructible<Impl, Args...>::value> = {}>
     range_interface(Args&&... args) : impl_{ std::forward<Args>(args)... }
     {
     }
@@ -35,7 +35,7 @@ struct range_interface
         return impl_.end();
     }
 
-    template <class Container, require<std::is_constructible<Container, iterator, iterator>::valeu> = {}>
+    template <class Container, require<std::is_constructible<Container, iterator, iterator>::value> = {}>
     operator Container() const
     {
         return Container{ begin(), end() };
