@@ -15,7 +15,7 @@ struct range_ref
 
     range_ref() = default;
 
-    range_ref(Range& range) : range_(range)
+    range_ref(Range& range) : range_(&range)
     {
     }
 

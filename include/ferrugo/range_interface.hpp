@@ -80,4 +80,14 @@ struct range_interface
     }
 };
 
+template <class T>
+struct is_range_interface : std::false_type
+{
+};
+
+template <class Impl>
+struct is_range_interface<range_interface<Impl>> : std::true_type
+{
+};
+
 }  // namespace ferrugo
