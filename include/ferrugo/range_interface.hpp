@@ -80,47 +80,4 @@ struct range_interface
     }
 };
 
-namespace detail
-{
-
-template <class Iter>
-struct iterator_range
-{
-    Iter b_;
-    Iter e_;
-
-    iterator_range() = default;
-
-    iterator_range(Iter b, Iter e) : b_(b), e_(e)
-    {
-    }
-
-    iterator_range(std::pair<Iter, Iter> p) : iterator_range(std::get<0>(p), std::get<1>(p))
-    {
-    }
-
-    iterator_range(std::tuple<Iter, Iter> t) : iterator_range(std::get<0>(t), std::get<1>(t))
-    {
-    }
-
-    iterator_range(Iter b, typename std::iterator_traits<Iter>::difference_type n) : iterator_range(b, std::next(b, n))
-    {
-    }
-
-    Iter begin() const
-    {
-        return b_;
-    }
-
-    Iter end() const
-    {
-        return e_;
-    }
-};
-
-}  // namespace detail
-
-template <class Iter>
-using iterator_range = range_interface<detail::iterator_range<Iter>>;
-
 }  // namespace ferrugo
