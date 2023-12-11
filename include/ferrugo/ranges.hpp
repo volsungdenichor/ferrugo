@@ -10,7 +10,7 @@ namespace ferrugo
 struct make_range_fn
 {
     template <class Range, require<is_range_interface<typename std::decay<Range>::type>::value> = {}>
-    auto make(Range&& range) const -> Range
+    auto make(Range&& range) const -> typename std::decay<Range>::type
     {
         return std::forward<Range>(range);
     }
