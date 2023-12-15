@@ -11,31 +11,56 @@ namespace detail
 {
 
 template <class T>
-struct i_iterator
+struct i_forward_iterator
 {
-    virtual ~i_iterator() = default;
+    virtual ~i_forward_iterator() = default;
+    virtual std::unique_ptr<i_forward_iterator> clone() const = 0;
+
     virtual T deref() const = 0;
     virtual void inc() = 0;
-    virtual bool is_equal(const i_iterator& other) const = 0;
-    virtual std::unique_ptr<i_iterator> clone() const = 0;
+    virtual bool is_equal(const i_forward_iterator& other) const = 0;
 };
 
 template <class T>
-struct i_range
+struct i_random_access_iterator
 {
-    virtual ~i_range() = default;
-    virtual std::unique_ptr<i_iterator<T>> begin() const = 0;
-    virtual std::unique_ptr<i_iterator<T>> end() const = 0;
+    virtual ~i_random_access_iterator() = default;
+    virtual std::unique_ptr<i_random_access_iterator> clone() const = 0;
+
+    virtual T deref() const = 0;
+    virtual std::ptrdiff_t distance_to(const i_random_access_iterator& other) const = 0;
+    virtual void advance(std::ptrdiff_t offset) = 0;
+};
+
+template <class T>
+struct i_forward_range
+{
+    virtual ~i_forward_range() = default;
+    virtual std::unique_ptr<i_forward_iterator<T>> begin() const = 0;
+    virtual std::unique_ptr<i_forward_iterator<T>> end() const = 0;
+};
+
+template <class T>
+struct i_random_access_range
+{
+    virtual ~i_random_access_range() = default;
+    virtual std::unique_ptr<i_random_access_iterator<T>> begin() const = 0;
+    virtual std::unique_ptr<i_random_access_iterator<T>> end() const = 0;
 };
 
 template <class T, class Inner>
-struct iterator_wrapper : public i_iterator<T>
+struct forward_iterator_impl : public i_forward_iterator<T>
 {
     using inner_iter = Inner;
     inner_iter it;
 
-    iterator_wrapper(inner_iter it) : it{ it }
+    forward_iterator_impl(inner_iter it) : it{ it }
     {
+    }
+
+    std::unique_ptr<i_forward_iterator<T>> clone() const override
+    {
+        return std::make_unique<forward_iterator_impl>(it);
     }
 
     T deref() const override
@@ -48,47 +73,93 @@ struct iterator_wrapper : public i_iterator<T>
         ++it;
     }
 
-    bool is_equal(const i_iterator<T>& other) const override
+    bool is_equal(const i_forward_iterator<T>& other) const override
     {
-        return it == static_cast<const iterator_wrapper&>(other).it;
+        return it == static_cast<const forward_iterator_impl&>(other).it;
+    }
+};
+
+template <class T, class Inner>
+struct random_access_iterator_impl : public i_random_access_iterator<T>
+{
+    using inner_iter = Inner;
+    inner_iter it;
+
+    random_access_iterator_impl(inner_iter it) : it{ it }
+    {
     }
 
-    std::unique_ptr<i_iterator<T>> clone() const override
+    std::unique_ptr<i_random_access_iterator<T>> clone() const override
     {
-        return std::make_unique<iterator_wrapper>(it);
+        return std::make_unique<random_access_iterator_impl>(it);
+    }
+
+    T deref() const override
+    {
+        return *it;
+    }
+
+    std::ptrdiff_t distance_to(const i_random_access_iterator<T>& other) const override
+    {
+        return std::distance(it, static_cast<const random_access_iterator_impl&>(other).it);
+    }
+
+    void advance(std::ptrdiff_t offset) override
+    {
+        std::advance(it, offset);
     }
 };
 
 template <class T, class Range>
-struct range_wrapper : public i_range<T>
+struct forward_range_impl : public i_forward_range<T>
 {
     Range range_;
 
-    range_wrapper(Range range) : range_{ std::move(range) }
+    forward_range_impl(Range range) : range_{ std::move(range) }
     {
     }
 
-    std::unique_ptr<i_iterator<T>> begin() const override
+    std::unique_ptr<i_forward_iterator<T>> begin() const override
     {
-        return std::make_unique<iterator_wrapper<T, iterator_t<Range>>>(std::begin(range_));
+        return std::make_unique<forward_iterator_impl<T, iterator_t<Range>>>(std::begin(range_));
     }
 
-    std::unique_ptr<i_iterator<T>> end() const override
+    std::unique_ptr<i_forward_iterator<T>> end() const override
     {
-        return std::make_unique<iterator_wrapper<T, iterator_t<Range>>>(std::end(range_));
+        return std::make_unique<forward_iterator_impl<T, iterator_t<Range>>>(std::end(range_));
+    }
+};
+
+template <class T, class Range>
+struct random_access_range_impl : public i_random_access_range<T>
+{
+    Range range_;
+
+    random_access_range_impl(Range range) : range_{ std::move(range) }
+    {
+    }
+
+    std::unique_ptr<i_random_access_iterator<T>> begin() const override
+    {
+        return std::make_unique<random_access_iterator_impl<T, iterator_t<Range>>>(std::begin(range_));
+    }
+
+    std::unique_ptr<i_random_access_iterator<T>> end() const override
+    {
+        return std::make_unique<random_access_iterator_impl<T, iterator_t<Range>>>(std::end(range_));
     }
 };
 
 template <class T>
-struct iterable
+struct forward_iterable
 {
     struct iter
     {
-        std::unique_ptr<i_iterator<T>> it;
+        std::unique_ptr<i_forward_iterator<T>> it;
 
         iter() = default;
 
-        iter(std::unique_ptr<i_iterator<T>> it) : it{ std::move(it) }
+        iter(std::unique_ptr<i_forward_iterator<T>> it) : it{ std::move(it) }
         {
         }
 
@@ -116,17 +187,17 @@ struct iterable
         }
     };
 
-    std::unique_ptr<i_range<T>> impl_;
+    std::unique_ptr<i_forward_range<T>> impl_;
 
     using iterator = iterator_interface<iter>;
 
     template <class Range>
-    iterable(Range&& range) : impl_(create(make_range(std::forward<Range>(range))))
+    forward_iterable(Range&& range) : impl_(create(make_range(std::forward<Range>(range))))
     {
     }
 
-    iterable(const iterable&) = delete;
-    iterable(iterable&&) = default;
+    forward_iterable(const forward_iterable&) = delete;
+    forward_iterable(forward_iterable&&) = default;
 
     iterator begin() const
     {
@@ -139,15 +210,84 @@ struct iterable
     }
 
     template <class Range>
-    static std::unique_ptr<i_range<T>> create(Range range)
+    static std::unique_ptr<i_forward_range<T>> create(Range range)
     {
-        return std::make_unique<range_wrapper<T, Range>>(std::move(range));
+        return std::make_unique<forward_range_impl<T, Range>>(std::move(range));
+    }
+};
+
+template <class T>
+struct random_access_iterable
+{
+    struct iter
+    {
+        std::unique_ptr<i_random_access_iterator<T>> it;
+
+        iter() = default;
+
+        iter(std::unique_ptr<i_random_access_iterator<T>> it) : it{ std::move(it) }
+        {
+        }
+
+        iter(const iter& other) : it{ other.it ? other.it->clone() : nullptr }
+        {
+        }
+
+        iter(iter&& other) : it{ std::move(other.it) }
+        {
+        }
+
+        T deref() const
+        {
+            return it->deref();
+        }
+
+        std::ptrdiff_t distance_to(const iter& other) const
+        {
+            return it->distance_to(*other.it);
+        }
+
+        void advance(std::ptrdiff_t offset)
+        {
+            it->advance(offset);
+        }
+    };
+
+    std::unique_ptr<i_random_access_range<T>> impl_;
+
+    using iterator = iterator_interface<iter>;
+
+    template <class Range>
+    random_access_iterable(Range&& range) : impl_(create(make_range(std::forward<Range>(range))))
+    {
+    }
+
+    random_access_iterable(const random_access_iterable&) = delete;
+    random_access_iterable(random_access_iterable&&) = default;
+
+    iterator begin() const
+    {
+        return iterator{ impl_->begin() };
+    }
+
+    iterator end() const
+    {
+        return iterator{ impl_->end() };
+    }
+
+    template <class Range>
+    static std::unique_ptr<i_random_access_range<T>> create(Range range)
+    {
+        return std::make_unique<random_access_range_impl<T, Range>>(std::move(range));
     }
 };
 
 }  // namespace detail
 
 template <class T>
-using iterable = range_interface<detail::iterable<T>>;
+using forward_iterable = range_interface<detail::forward_iterable<T>>;
+
+template <class T>
+using random_access_iterable = range_interface<detail::random_access_iterable<T>>;
 
 }  // namespace ferrugo

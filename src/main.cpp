@@ -17,15 +17,16 @@
 
 void run()
 {
-    using ferrugo::fn;
-    std::vector<int> vect = { 1, 2, 3, 5 };
-    const auto f = 10                                  //
-                   | fn([](int x) { return x + 1; })   //
-                   | fn([](int x) { return 9 * x; })   //
-                   | fn([](int x) { return x - 98; })  //
-                   | fn([&](int x) -> const int& { return vect[x]; });
-
-    std::cout << f << std::endl;
+    std::vector<int> v{ 11, 13, 19 };
+    ferrugo::random_access_iterable<int> x{ v };
+    for (auto v : x)
+    {
+        std::cout << v << std::endl;
+    }
+    for (std::size_t i = 0; i < x.size(); ++i)
+    {
+        std::cout << i << " " << x[i] << std::endl;
+    }
 }
 
 int main(int argc, char const* argv[])

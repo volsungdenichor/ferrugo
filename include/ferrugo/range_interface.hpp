@@ -73,7 +73,7 @@ struct range_interface
         throw std::out_of_range{ "index out of range" };
     }
 
-    // template <class It = iterator, require<is_random_access_iterator<It>::value> = {}>
+    template <class It = iterator, require<is_random_access_iterator<It>::value> = {}>
     size_type size() const
     {
         return std::distance(begin(), end());
