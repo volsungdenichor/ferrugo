@@ -186,6 +186,7 @@ struct forward_iterable
     template <class Range>
     forward_iterable(Range&& range) : impl_(create(make_range(std::forward<Range>(range))))
     {
+        static_assert(is_forward_range<typename std::decay<Range>::type>::value, "forward range required");
     }
 
     forward_iterable(const forward_iterable&) = delete;
@@ -252,6 +253,7 @@ struct random_access_iterable
     template <class Range>
     random_access_iterable(Range&& range) : impl_(create(make_range(std::forward<Range>(range))))
     {
+        static_assert(is_random_access_range<typename std::decay<Range>::type>::value, "random access range required");
     }
 
     random_access_iterable(const random_access_iterable&) = delete;
