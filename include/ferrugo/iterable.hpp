@@ -32,20 +32,12 @@ struct i_random_access_iterator
     virtual void advance(std::ptrdiff_t offset) = 0;
 };
 
-template <class T>
-struct i_forward_range
+template <class It>
+struct i_range
 {
-    virtual ~i_forward_range() = default;
-    virtual std::unique_ptr<i_forward_iterator<T>> begin() const = 0;
-    virtual std::unique_ptr<i_forward_iterator<T>> end() const = 0;
-};
-
-template <class T>
-struct i_random_access_range
-{
-    virtual ~i_random_access_range() = default;
-    virtual std::unique_ptr<i_random_access_iterator<T>> begin() const = 0;
-    virtual std::unique_ptr<i_random_access_iterator<T>> end() const = 0;
+    virtual ~i_range() = default;
+    virtual std::unique_ptr<It> begin() const = 0;
+    virtual std::unique_ptr<It> end() const = 0;
 };
 
 template <class T, class Inner>
@@ -111,7 +103,7 @@ struct random_access_iterator_impl : public i_random_access_iterator<T>
 };
 
 template <class T, class Range>
-struct forward_range_impl : public i_forward_range<T>
+struct forward_range_impl : public i_range<i_forward_iterator<T>>
 {
     Range range_;
 
@@ -131,7 +123,7 @@ struct forward_range_impl : public i_forward_range<T>
 };
 
 template <class T, class Range>
-struct random_access_range_impl : public i_random_access_range<T>
+struct random_access_range_impl : public i_range<i_random_access_iterator<T>>
 {
     Range range_;
 
@@ -187,7 +179,7 @@ struct forward_iterable
         }
     };
 
-    std::unique_ptr<i_forward_range<T>> impl_;
+    std::unique_ptr<i_range<i_forward_iterator<T>>> impl_;
 
     using iterator = iterator_interface<iter>;
 
@@ -210,7 +202,7 @@ struct forward_iterable
     }
 
     template <class Range>
-    static std::unique_ptr<i_forward_range<T>> create(Range range)
+    static std::unique_ptr<i_range<i_forward_iterator<T>>> create(Range range)
     {
         return std::make_unique<forward_range_impl<T, Range>>(std::move(range));
     }
@@ -253,7 +245,7 @@ struct random_access_iterable
         }
     };
 
-    std::unique_ptr<i_random_access_range<T>> impl_;
+    std::unique_ptr<i_range<i_random_access_iterator<T>>> impl_;
 
     using iterator = iterator_interface<iter>;
 
@@ -276,7 +268,7 @@ struct random_access_iterable
     }
 
     template <class Range>
-    static std::unique_ptr<i_random_access_range<T>> create(Range range)
+    static std::unique_ptr<i_range<i_random_access_iterator<T>>> create(Range range)
     {
         return std::make_unique<random_access_range_impl<T, Range>>(std::move(range));
     }
