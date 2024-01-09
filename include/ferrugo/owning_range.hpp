@@ -48,7 +48,7 @@ template <class Range>
 using owning_range = range_interface<detail::owning_range<Range>>;
 
 template <class Range>
-auto make_owning_range(Range&& range) -> owning_range<typename std::decay<Range>::type>
+auto make_owning_range(Range&& range) -> owning_range<decay_t<Range>>
 {
     return { std::forward<Range>(range) };
 }

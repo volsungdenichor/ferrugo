@@ -9,20 +9,20 @@ namespace ferrugo
 
 struct make_range_fn
 {
-    template <class Range, require<is_range_interface<typename std::decay<Range>::type>::value> = {}>
-    auto make(Range&& range) const -> typename std::decay<Range>::type
+    template <class Range, require<is_range_interface<decay_t<Range>>::value> = {}>
+    auto make(Range&& range) const -> decay_t<Range>
     {
         return std::forward<Range>(range);
     }
 
-    template <class Range, require<!is_range_interface<typename std::decay<Range>::type>::value && std::is_lvalue_reference<Range>::value> = {}>
+    template <class Range, require<!is_range_interface<decay_t<Range>>::value && std::is_lvalue_reference<Range>::value> = {}>
     auto make(Range&& range) const -> range_ref<typename std::remove_reference<Range>::type>
     {
         return make_range_ref(std::forward<Range>(range));
     }
 
-    template <class Range, require<!is_range_interface<typename std::decay<Range>::type>::value && !std::is_lvalue_reference<Range>::value> = {}>
-    auto make(Range&& range) const -> owning_range<typename std::decay<Range>::type>
+    template <class Range, require<!is_range_interface<decay_t<Range>>::value && !std::is_lvalue_reference<Range>::value> = {}>
+    auto make(Range&& range) const -> owning_range<decay_t<Range>>
     {
         return make_owning_range(std::forward<Range>(range));
     }

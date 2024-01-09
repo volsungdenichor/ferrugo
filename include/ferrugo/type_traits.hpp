@@ -49,6 +49,9 @@ struct is_detected : detail::detector_impl<void_t<>, Op, Args...>
 };
 
 template <class T>
+using decay_t = typename std::decay<T>::type;
+
+template <class T>
 using iterator_t = decltype(std::begin(std::declval<T&>()));
 
 template <class T>

@@ -7,6 +7,8 @@
 #include <ferrugo/optional.hpp>
 #include <ferrugo/pipeline.hpp>
 #include <ferrugo/range_ref.hpp>
+#include <ferrugo/seq/filter.hpp>
+#include <ferrugo/seq/transform.hpp>
 #include <ferrugo/std_ostream.hpp>
 #include <ferrugo/type_name.hpp>
 #include <iostream>
@@ -17,16 +19,29 @@
 
 void run()
 {
-    std::vector<int> v{ 11, 13, 19 };
-    ferrugo::random_access_iterable<int> x{ v };
-    for (auto v : x)
+    using namespace ferrugo;
+
+    static const auto mul_10 = [](int x) { return 10 * x; };
+    static const auto str = [](int x) { return std::to_string(x); };
+    static const auto is_even = [](int x) { return x % 2 == 0; };
+
+    std::vector<int> v{ 11, 12, 13, 18, 19 };
+
+    const auto pipe = seq::filter(is_even) | seq::transform(mul_10) | seq::transform(str);
+
+    std::cout << type_name(pipe) << std::endl;
+
+    for (auto&& item : v | pipe)
     {
-        std::cout << v << std::endl;
+        std::cout << item << std::endl;
     }
-    for (std::size_t i = 0; i < x.size(); ++i)
+    std::cout << "---" << std::endl;
+
+    for (auto&& item : pipe(v))
     {
-        std::cout << i << " " << x[i] << std::endl;
+        std::cout << item << std::endl;
     }
+    std::cout << "---" << std::endl;
 }
 
 int main(int argc, char const* argv[])

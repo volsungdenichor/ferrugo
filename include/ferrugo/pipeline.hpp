@@ -24,6 +24,14 @@ struct pipeline_t
 {
     std::tuple<Pipes...> pipes_;
 
+    pipeline_t(std::tuple<Pipes...> pipes) : pipes_(std::move(pipes))
+    {
+    }
+
+    pipeline_t(Pipes... pipes) : pipes_({ std::move(pipes...) })
+    {
+    }
+
 private:
     template <std::size_t I, class... Args>
     auto call(detail::tag<I, I + 1>, Args&&... args) const
@@ -49,6 +57,17 @@ public:
 
 namespace detail
 {
+
+template <class T>
+struct is_pipeline : std::false_type
+{
+};
+
+template <class... Args>
+struct is_pipeline<pipeline_t<Args...>> : std::true_type
+{
+};
+
 struct make_pipeline_fn
 {
 private:
@@ -88,7 +107,7 @@ auto operator|(pipeline_t<L...> lhs, pipeline_t<R...> rhs) -> decltype(make_pipe
     return make_pipeline(std::move(lhs), std::move(rhs));
 }
 
-template <class T, class... Pipes>
+template <class T, class... Pipes, require<!detail::is_pipeline<decay_t<T>>::value> = {}>
 auto operator|(T&& item, const pipeline_t<Pipes...>& pipeline) -> decltype(pipeline(std::forward<T>(item)))
 {
     return pipeline(std::forward<T>(item));

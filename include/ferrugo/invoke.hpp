@@ -7,6 +7,8 @@
 namespace ferrugo
 {
 
+#if 0
+
 namespace detail
 {
 
@@ -20,5 +22,12 @@ auto invoke(F f, Args&&... args) -> RETURN(std::ref(f)(std::forward<Args>(args).
 
 template <class F, class... Args>
 auto invoke(F&& func, Args&&... args) -> RETURN(detail::invoke(std::forward<F>(func), std::forward<Args>(args)...));
+
+#else
+
+template <class F, class... Args>
+auto invoke(F f, Args&&... args) -> RETURN(std::ref(f)(std::forward<Args>(args)...));
+
+#endif
 
 }  // namespace ferrugo
