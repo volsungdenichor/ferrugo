@@ -82,13 +82,13 @@ struct ferrugo::core::formatter<std::reference_wrapper<T>>
     }
 };
 
-void handle(ferrugo::core::random_access_iterable<int> rng)
+void handle(ferrugo::core::iterable<int> rng)
 {
     for (auto&& x : rng)
     {
         ferrugo::core::print(x, '\n');
     }
-    ferrugo::core::print("size=", rng.size(), '\n');
+    // ferrugo::core::print("size=", rng.size(), '\n');
 }
 
 void run()

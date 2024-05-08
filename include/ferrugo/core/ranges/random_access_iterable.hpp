@@ -15,10 +15,9 @@ namespace detail
 {
 
 template <class T>
-struct i_random_access_iterator
+struct i_random_access_iterator : i_cloneable<i_random_access_iterator<T>>
 {
     virtual ~i_random_access_iterator() = default;
-    virtual std::unique_ptr<i_random_access_iterator> clone() const = 0;
 
     virtual T deref() const = 0;
     virtual std::ptrdiff_t distance_to(const i_random_access_iterator& other) const = 0;
@@ -28,13 +27,12 @@ struct i_random_access_iterator
 template <class T>
 using i_random_access_range = i_range<i_random_access_iterator<T>>;
 
-template <class T, class Inner>
+template <class T, class Iter>
 struct random_access_iterator_impl : public i_random_access_iterator<T>
 {
-    using inner_iter = Inner;
-    inner_iter m_it;
+    Iter m_it;
 
-    random_access_iterator_impl(inner_iter it) : m_it{ it }
+    random_access_iterator_impl(Iter it) : m_it{ it }
     {
     }
 
@@ -121,7 +119,7 @@ struct random_access_iterable
     using iterator = iterator_interface<iter>;
 
     template <class Range>
-    random_access_iterable(Range range) : m_impl{ create(std::forward<Range>(range)) }
+    random_access_iterable(Range range) : m_impl{ std::make_unique<random_access_range_impl<T, Range>>(std::move(range)) }
     {
         static_assert(is_random_access_range<std::decay_t<Range>>{}, "random access range required");
     }
@@ -137,12 +135,6 @@ struct random_access_iterable
     iterator end() const
     {
         return iterator{ m_impl->end() };
-    }
-
-    template <class Range>
-    static auto create(Range range) -> std::unique_ptr<i_random_access_range<T>>
-    {
-        return std::make_unique<random_access_range_impl<T, Range>>(std::move(range));
     }
 };
 

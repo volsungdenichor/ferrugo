@@ -20,6 +20,13 @@ struct i_range
     virtual std::unique_ptr<It> end() const = 0;
 };
 
+template <class T>
+struct i_cloneable
+{
+    virtual ~i_cloneable() = default;
+    virtual std::unique_ptr<T> clone() const = 0;
+};
+
 }  // namespace detail
 }  // namespace core
 }  // namespace ferrugo

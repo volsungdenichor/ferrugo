@@ -15,10 +15,9 @@ namespace detail
 {
 
 template <class T>
-struct i_forward_iterator
+struct i_forward_iterator : i_cloneable<i_forward_iterator<T>>
 {
     virtual ~i_forward_iterator() = default;
-    virtual std::unique_ptr<i_forward_iterator> clone() const = 0;
 
     virtual T deref() const = 0;
     virtual void inc() = 0;
@@ -28,13 +27,12 @@ struct i_forward_iterator
 template <class T>
 using i_forward_range = i_range<i_forward_iterator<T>>;
 
-template <class T, class Inner>
+template <class T, class Iter>
 struct forward_iterator_impl : public i_forward_iterator<T>
 {
-    using inner_iter = Inner;
-    inner_iter m_it;
+    Iter m_it;
 
-    forward_iterator_impl(inner_iter it) : m_it{ it }
+    forward_iterator_impl(Iter it) : m_it{ it }
     {
     }
 
@@ -121,7 +119,7 @@ struct forward_iterable
     using iterator = iterator_interface<iter>;
 
     template <class Range>
-    forward_iterable(Range range) : m_impl{ create(std::move(range)) }
+    forward_iterable(Range range) : m_impl{ std::make_unique<forward_range_impl<T, Range>>(std::move(range)) }
     {
         static_assert(is_forward_range<std::decay_t<Range>>{}, "forward range required");
     }
@@ -137,12 +135,6 @@ struct forward_iterable
     iterator end() const
     {
         return iterator{ m_impl->end() };
-    }
-
-    template <class Range>
-    static auto create(Range range) -> std::unique_ptr<i_forward_range<T>>
-    {
-        return std::make_unique<forward_range_impl<T, Range>>(std::move(range));
     }
 };
 
