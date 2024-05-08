@@ -66,6 +66,9 @@ struct iterator_range : range_interface<detail::iterator_range<Iter>>
 template <class Iter>
 iterator_range(Iter, Iter) -> iterator_range<Iter>;
 
+template <class Range>
+iterator_range(Range&&) -> iterator_range<iterator_t<Range>>;
+
 }  // namespace core
 
 }  // namespace ferrugo

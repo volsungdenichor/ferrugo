@@ -82,7 +82,12 @@ struct ferrugo::core::formatter<std::reference_wrapper<T>>
     }
 };
 
-void handle(ferrugo::core::iterable<int> rng)
+ferrugo::core::iterable<int> create()
+{
+    return ferrugo::core::owning_range{ std::vector<int>{ 1, 9, 3, 7, 5 } };
+}
+
+void handle(const ferrugo::core::iterable<int>& rng)
 {
     for (auto&& x : rng)
     {
@@ -94,17 +99,15 @@ void handle(ferrugo::core::iterable<int> rng)
 void run()
 {
     using namespace ferrugo::core;
-    const auto p = pipe(
+    static const auto p = pipe(
         [=](int x) { return 10 * x; },  //
         [=](int x) { return x + 1; },
         [=](int x) { return x / 10.0; },
-        [=](double x) { return std::to_string(x); },
+        [=](double x) { return format(x); },
         [=](const std::string& x) { return format('_', x, '_'); },
         [=](const std::string& x) { cout(x, '\n'); });
 
-    int v[] = { 2, 3, 5, 7, 11, 13, 17, -1 };
-
-    handle(ref_range(v));
+    handle(create());
 }
 
 void print_error()
