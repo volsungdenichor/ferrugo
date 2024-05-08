@@ -1,14 +1,17 @@
 #pragma once
 
-#include <ferrugo/type_traits.hpp>
+#include <ferrugo/core/type_traits.hpp>
 
 namespace ferrugo
+{
+
+namespace core
 {
 
 template <class Impl>
 struct range_interface
 {
-    Impl impl_;
+    Impl m_impl;
 
     using begin_iterator = decltype(std::declval<const Impl&>().begin());
     using end_iterator = decltype(std::declval<const Impl&>().end());
@@ -16,26 +19,29 @@ struct range_interface
     using iterator = begin_iterator;
     using const_iterator = iterator;
 
-    using reference = typename std::iterator_traits<iterator>::reference;
+    using reference = iter_reference_t<iterator>;
     using difference_type = iter_difference_t<iterator>;
     using size_type = difference_type;
 
-    template <class... Args, require<std::is_constructible<Impl, Args...>::value> = {}>
-    range_interface(Args&&... args) : impl_{ std::forward<Args>(args)... }
+    template <class... Args, require<std::is_constructible<Impl, Args...>{}> = 0>
+    range_interface(Args&&... args) : m_impl{ std::forward<Args>(args)... }
     {
     }
 
+    range_interface(const range_interface&) = default;
+    range_interface(range_interface&&) = default;
+
     iterator begin() const
     {
-        return impl_.begin();
+        return m_impl.begin();
     }
 
     iterator end() const
     {
-        return impl_.end();
+        return m_impl.end();
     }
 
-    template <class Container, require<std::is_constructible<Container, iterator, iterator>::value> = {}>
+    template <class Container, require<std::is_constructible<Container, iterator, iterator>{}> = 0>
     operator Container() const
     {
         return Container{ begin(), end() };
@@ -51,19 +57,19 @@ struct range_interface
         return *begin();
     }
 
-    template <class It = iterator, require<is_bidirectional_iterator<It>::value> = {}>
+    template <class It = iterator, require<is_bidirectional_iterator<It>{}> = 0>
     reference back() const
     {
         return *std::prev(end());
     }
 
-    template <class It = iterator, require<is_random_access_iterator<It>::value> = {}>
+    template <class It = iterator, require<is_random_access_iterator<It>{}> = 0>
     reference operator[](difference_type n) const
     {
         return *std::next(begin(), n);
     }
 
-    template <class It = iterator, require<is_random_access_iterator<It>::value> = {}>
+    template <class It = iterator, require<is_random_access_iterator<It>{}> = 0>
     reference at(difference_type n) const
     {
         if (0 <= n && n < size())
@@ -73,7 +79,7 @@ struct range_interface
         throw std::out_of_range{ "index out of range" };
     }
 
-    template <class It = iterator, require<is_random_access_iterator<It>::value> = {}>
+    template <class It = iterator, require<is_random_access_iterator<It>{}> = 0>
     size_type size() const
     {
         return std::distance(begin(), end());
@@ -81,7 +87,7 @@ struct range_interface
 };
 
 template <class Impl>
-auto make_range_interface(Impl&& impl) -> range_interface<decay_t<Impl>>
+auto make_range_interface(Impl&& impl) -> range_interface<std::decay_t<Impl>>
 {
     return { std::forward<Impl>(impl) };
 }
@@ -95,5 +101,7 @@ template <class Impl>
 struct is_range_interface<range_interface<Impl>> : std::true_type
 {
 };
+
+}  // namespace core
 
 }  // namespace ferrugo

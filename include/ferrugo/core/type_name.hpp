@@ -1,13 +1,21 @@
 #pragma once
 
-#include <memory>
 #include <string>
+#include <memory>
 
 #ifdef __GNUG__
 #include <cxxabi.h>
 
 #include <cstdlib>
 #include <memory>
+#endif
+
+namespace ferrugo
+{
+namespace core
+{
+
+#ifdef __GNUG__
 
 inline std::string demangle(const char* name)
 {
@@ -18,21 +26,27 @@ inline std::string demangle(const char* name)
 
 #else
 
+// does nothing if not g++
 inline std::string demangle(const char* name)
 {
     return name;
 }
 
-#endif  // #ifdef __GNUG__
+#endif
 
 template <class T>
-std::string type_name()
+std::string_view type_name()
 {
-    return demangle(typeid(T).name());
+    static const std::string result = demangle(typeid(T).name());
+    return result;
 }
 
 template <class T>
-std::string type_name(const T&)
+std::string_view type_name(const T&)
 {
     return type_name<T>();
 }
+
+}  // namespace core
+
+}  // namespace ferrugo

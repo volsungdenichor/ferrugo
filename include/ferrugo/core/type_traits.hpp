@@ -6,28 +6,11 @@
 namespace ferrugo
 {
 
-template <bool C>
-using require = typename std::enable_if<C, int>::type;
-
-template <bool B>
-using bool_constant = std::integral_constant<bool, B>;
-
-template <class...>
-struct always_false : std::false_type
+namespace core
 {
-};
 
 namespace detail
 {
-
-template <class... Args>
-struct make_void
-{
-    using type = void;
-};
-
-template <class... Args>
-using void_t = typename make_void<Args...>::type;
 
 template <class AlwaysVoid, template <class...> class Op, class... Args>
 struct detector_impl : std::false_type
@@ -35,21 +18,16 @@ struct detector_impl : std::false_type
 };
 
 template <template <class...> class Op, class... Args>
-struct detector_impl<void_t<Op<Args...>>, Op, Args...> : std::true_type
+struct detector_impl<std::void_t<Op<Args...>>, Op, Args...> : std::true_type
 {
 };
 
 }  // namespace detail
 
-using detail::void_t;
-
 template <template <class...> class Op, class... Args>
-struct is_detected : detail::detector_impl<void_t<>, Op, Args...>
+struct is_detected : detail::detector_impl<std::void_t<>, Op, Args...>
 {
 };
-
-template <class T>
-using decay_t = typename std::decay<T>::type;
 
 template <class T>
 using iterator_t = decltype(std::begin(std::declval<T&>()));
@@ -92,21 +70,32 @@ struct convertible_to_any
     operator T() const;
 };
 
+template <template <class> class C>
+struct convertible_to
+{
+    template <class T, class = std::enable_if_t<C<T>::value>>
+    operator T() const;
+};
+
 template <class T>
 using is_assignable_impl = decltype(std::declval<T>() = std::declval<convertible_to_any>());
 
 template <class T>
-struct is_assignable : is_detected<is_assignable_impl, T>
-{
-};
+using has_ostream_operator_impl = decltype(std::declval<std::ostream&>() << std::declval<T>());
 
 }  // namespace detail
 
-template <template <class> class C>
-struct convertible_to
+template <bool C>
+using require = typename std::enable_if<C, int>::type;
+
+template <class...>
+struct always_false : std::false_type
 {
-    template <class T, class = typename std::enable_if<C<T>::value>::type>
-    operator T() const;
+};
+
+template <class T>
+struct has_ostream_operator : is_detected<detail::has_ostream_operator_impl, T>
+{
 };
 
 template <class T>
@@ -129,11 +118,6 @@ struct is_random_access_iterator : detail::iterator_of_category<std::random_acce
 {
 };
 
-template <class T, class = void_t<>>
-struct is_output_iterator : bool_constant<is_input_iterator<T>::value && detail::is_assignable<iter_reference_t<T>>::value>
-{
-};
-
 template <class T>
 struct is_input_range : is_input_iterator<iterator_t<T>>
 {
@@ -153,5 +137,16 @@ template <class T>
 struct is_random_access_range : is_random_access_iterator<iterator_t<T>>
 {
 };
+
+template <class T>
+struct type_identity
+{
+    using type = T;
+};
+
+template <class T>
+using type_identity_t = typename type_identity<T>::type;
+
+}  // namespace core
 
 }  // namespace ferrugo

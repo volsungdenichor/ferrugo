@@ -1,39 +1,16 @@
 #pragma once
 
-#include <cstddef>
+#include <utility>
 
 namespace ferrugo
 {
 
-template <class T, T... Ints>
-struct integer_sequence
+namespace core
 {
-    typedef T value_type;
 
-    static constexpr std::size_t size()
-    {
-        return sizeof...(Ints);
-    }
-};
-
-template <std::size_t... Ints>
-using index_sequence = integer_sequence<std::size_t, Ints...>;
-
-template <class T, std::size_t N, T... Is>
-struct make_integer_sequence : make_integer_sequence<T, N - 1, N - 1, Is...>
-{
-};
-
-template <class T, T... Is>
-struct make_integer_sequence<T, 0, Is...> : integer_sequence<T, Is...>
-{
-};
-
-template <std::size_t N>
-using make_index_sequence = make_integer_sequence<std::size_t, N>;
-
-template <typename... T>
-using index_sequence_for = make_index_sequence<sizeof...(T)>;
+using std::integer_sequence;
+using std::index_sequence;
+using std::make_index_sequence;
 
 namespace detail
 {
@@ -61,10 +38,13 @@ struct cat_sequence<index_sequence<Ints1...>, index_sequence<Ints2...>>
 
 template <std::size_t N, class Seq>
 using offset_sequence = typename detail::offset_sequence<N, Seq>::type;
+
 template <class Seq1, class Seq2>
 using cat_sequence = typename detail::cat_sequence<Seq1, Seq2>::type;
 
 template <std::size_t B, std::size_t E>
 using sequence = offset_sequence<B, make_index_sequence<E - B>>;
+
+}  // namespace core
 
 }  // namespace ferrugo
