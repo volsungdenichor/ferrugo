@@ -100,6 +100,12 @@ auto operator|=(T&& item, const pipeline_t<Pipes...>& p) -> decltype(p(std::forw
     return p(std::forward<T>(item));
 }
 
+template <class T, class... Pipes, require<!detail::is_pipeline<std::decay_t<T>>{}> = 0>
+auto operator>>=(T&& item, const pipeline_t<Pipes...>& p) -> decltype(std::apply(p, std::forward<T>(item)))
+{
+    return std::apply(p, std::forward<T>(item));
+}
+
 }  // namespace core
 
 }  // namespace ferrugo

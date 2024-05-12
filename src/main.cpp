@@ -1,117 +1,132 @@
+#include <cassert>
 #include <ferrugo/core/format.hpp>
 #include <ferrugo/core/optional.hpp>
+#include <ferrugo/core/overloaded.hpp>
 #include <ferrugo/core/pipeline.hpp>
 #include <ferrugo/core/ranges.hpp>
 #include <ferrugo/core/type_name.hpp>
 #include <ferrugo/core/type_traits.hpp>
 #include <iostream>
+#include <map>
 #include <optional>
 #include <sstream>
 #include <stdexcept>
 #include <tuple>
+#include <variant>
 #include <vector>
 
-template <class T>
-struct ferrugo::core::formatter<std::vector<T>>
+enum class sex_t
 {
-    void operator()(std::ostream& os, const std::vector<T>& item) const
+    male,
+    female
+};
+
+struct person
+{
+    std::string name;
+    int age;
+    sex_t sex;
+};
+
+template <class T>
+struct enum_formatter
+{
+    std::map<T, std::string_view> m_values;
+
+    template <class... Tail>
+    explicit enum_formatter(T value, std::string_view name, const Tail&... tail)
     {
-        const auto b = std::begin(item);
-        const auto e = std::end(item);
-        format_to(os, "[");
-        for (auto it = b; it != e; ++it)
+        static_assert(sizeof...(tail) % 2 == 0, "Sequence of (value, name) required");
+        init(m_values, value, name, tail...);
+    }
+
+    void operator()(std::ostream& os, const T& item) const
+    {
+        ferrugo::core::write_to(os, m_values.at(item));
+    }
+
+    template <class... Tail>
+    static void init(std::map<T, std::string_view>& result, T value, std::string_view name, const Tail&... tail)
+    {
+        result.emplace(value, name);
+        if constexpr (sizeof...(tail) > 0)
         {
-            if (it != b)
+            init(result, tail...);
+        }
+    }
+};
+
+template <class T>
+struct struct_formatter
+{
+    using field_info = std::tuple<std::function<void(std::ostream&, const T&)>, std::string_view>;
+    std::vector<field_info> m_values;
+
+    template <class Type, class... Tail>
+    explicit struct_formatter(Type T::*field, std::string_view name, const Tail&... tail)
+    {
+        static_assert(sizeof...(tail) % 2 == 0, "Sequence of (field, name) required");
+        init(m_values, field, name, tail...);
+    }
+
+    void operator()(std::ostream& os, const T& item) const
+    {
+        os << "{";
+        for (std::size_t i = 0; i < m_values.size(); ++i)
+        {
+            if (i > 0)
             {
-                format_to(os, ", ");
+                os << "; ";
             }
-            format_to(os, *it);
+            const auto& [func, name] = m_values[i];
+            os << name << "=";
+            std::invoke(func, os, item);
         }
-        format_to(os, "]");
+        os << "}";
     }
-};
 
-template <class F, class S>
-struct ferrugo::core::formatter<std::pair<F, S>>
-{
-    void operator()(std::ostream& os, const std::pair<F, S>& item) const
+    template <class Type, class... Tail>
+    static void init(std::vector<field_info>& result, Type T::*field, std::string_view name, const Tail&... tail)
     {
-        format_to(os, "(", item.first, ", ", item.second, ")");
-    }
-};
-
-template <class... Args>
-struct ferrugo::core::formatter<std::tuple<Args...>>
-{
-    void operator()(std::ostream& os, const std::tuple<Args...>& item) const
-    {
-        format_to(os, "(");
-        std::apply(
-            [&os](const auto&... args)
-            {
-                auto n = 0u;
-                ((format_to(os, args) << (++n != sizeof...(args) ? ", " : "")), ...);
-            },
-            item);
-        format_to(os, ")");
-    }
-};
-
-template <class T>
-struct ferrugo::core::formatter<std::optional<T>>
-{
-    void operator()(std::ostream& os, const std::optional<T>& item) const
-    {
-        if (item)
+        auto f
+            = [=](std::ostream& os, const T& item) { ferrugo::core::write_to(os, std::invoke(std::mem_fn(field), item)); };
+        result.emplace_back(f, name);
+        if constexpr (sizeof...(tail) > 0)
         {
-            format_to(os, "some(", *item, ")");
-        }
-        else
-        {
-            format_to(os, "none");
+            init(result, tail...);
         }
     }
 };
 
-template <class T>
-struct ferrugo::core::formatter<std::reference_wrapper<T>>
+template <>
+struct ferrugo::core::formatter<sex_t> : enum_formatter<sex_t>
 {
-    void operator()(std::ostream& os, const std::reference_wrapper<T>& item) const
+    formatter() : enum_formatter{ sex_t::male, "male", sex_t::female, "female" }
     {
-        format_to(os, item.get());
     }
 };
 
-ferrugo::core::iterable<int> create()
+template <>
+struct ferrugo::core::formatter<person> : struct_formatter<person>
 {
-    return ferrugo::core::owning_range{ std::vector<int>{ 1, 9, 3, 7, 5 } };
-}
-
-void handle(const ferrugo::core::iterable<int>& rng)
-{
-    for (auto&& x : rng)
+    formatter() : struct_formatter{ &person::name, "name", &person::age, "age", &person::sex, "sex" }
     {
-        ferrugo::core::print(x, '\n');
     }
-    // ferrugo::core::print("size=", rng.size(), '\n');
-}
+};
 
 void run()
 {
-    using namespace ferrugo::core;
-    static const auto p = pipe(
-        [=](int x) { return 10 * x; },  //
-        [=](int x) { return x + 1; },
-        [=](int x) { return x / 10.0; },
-        [=](double x) { return format(x); },
-        [=](const std::string& x) { return format('_', x, '_'); },
-        [=](const std::string& x) { cout(x, '\n'); });
-
-    handle(create());
+    const std::vector<std::string> v{ "Ala", "Beata", "Celina", "Dezyderiusz" };
+    const auto p = ferrugo::core::println("{}");
+    p(v);
+    p(std::pair{ 1, 'X' });
+    p(std::tuple{ 'X', 3.14, 10, true, std::cref(v) });
+    p(person{ "Adam", 57, sex_t::male });
 }
 
 void print_error()
 {
+    static const auto format_error = ferrugo::core::format("Error: {}\n");
     using namespace ferrugo;
     try
     {
@@ -119,11 +134,11 @@ void print_error()
     }
     catch (const std::exception& ex)
     {
-        core::cerr("\nError: ", ex.what(), "\n");
+        std::cerr << format_error(ex.what());
     }
     catch (...)
     {
-        core::cerr("\nError: ", "UNKNOWN ERROR", "\n");
+        std::cerr << format_error("UNKNOWN ERROR");
     }
 }
 
