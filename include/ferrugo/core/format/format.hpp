@@ -19,11 +19,43 @@ namespace core
 template <class T, class = void>
 struct formatter;
 
-template <class... Args>
-std::ostream& write_to(std::ostream& os, Args&&... args)
+class parse_context
 {
-    (formatter<std::decay_t<Args>>{}.format(os, std::forward<Args>(args)), ...);
-    return os;
+public:
+    explicit parse_context(std::string_view specifier) : m_specifier{ specifier }
+    {
+    }
+
+    std::string_view specifier() const
+    {
+        return m_specifier;
+    }
+
+private:
+    std::string_view m_specifier;
+};
+
+class format_context
+{
+public:
+    constexpr explicit format_context(std::ostream& os) : m_os{ os }
+    {
+    }
+
+    std::ostream& stream() const
+    {
+        return m_os;
+    }
+
+private:
+    std::ostream& m_os;
+};
+
+template <class... Args>
+format_context& write_to(format_context& ctx, Args&&... args)
+{
+    (formatter<std::decay_t<Args>>{}.format(ctx, std::forward<Args>(args)), ...);
+    return ctx;
 }
 
 struct format_error : std::runtime_error
@@ -38,17 +70,17 @@ namespace detail
 
 struct arg_ref
 {
-    using arg_printer = void (*)(std::ostream&, const void*, std::string_view);
+    using arg_printer = void (*)(format_context&, const void*, const parse_context&);
     arg_printer m_printer;
     const void* m_ptr;
 
     template <class T>
     explicit arg_ref(const T& item)
-        : m_printer{ [](std::ostream& os, const void* ptr, std::string_view context)
+        : m_printer{ [](format_context& format_ctx, const void* ptr, const parse_context& parse_ctx)
                      {
                          formatter<T> f{};
-                         f.parse(context);
-                         f.format(os, *static_cast<const T*>(ptr));
+                         f.parse(parse_ctx);
+                         f.format(format_ctx, *static_cast<const T*>(ptr));
                      } }
         , m_ptr{ std::addressof(item) }
     {
@@ -57,9 +89,9 @@ struct arg_ref
     arg_ref(const arg_ref&) = default;
     arg_ref(arg_ref&&) = default;
 
-    void print(std::ostream& os, std::string_view context) const
+    void print(format_context& format_ctx, const parse_context& parse_ctx) const
     {
-        m_printer(os, m_ptr, context);
+        m_printer(format_ctx, m_ptr, parse_ctx);
     }
 };
 
@@ -83,7 +115,8 @@ private:
     struct print_argument
     {
         int index;
-        std::string_view context;
+        parse_context context;
+        // std::string_view specifier;
     };
 
     using print_action = std::variant<print_text, print_argument>;
@@ -93,13 +126,14 @@ public:
     {
     }
 
-    void format(std::ostream& os, const std::vector<arg_ref>& arguments) const
+    void format(format_context& format_ctx, const std::vector<arg_ref>& arguments) const
     {
         for (const auto& action : m_actions)
         {
             std::visit(
-                ferrugo::core::overloaded{ [&](const print_text& a) { os << a.text; },
-                                           [&](const print_argument& a) { arguments.at(a.index).print(os, a.context); } },
+                ferrugo::core::overloaded{ [&](const print_text& a) { format_ctx.stream() << a.text; },
+                                           [&](const print_argument& a)
+                                           { arguments.at(a.index).print(format_ctx, a.context); } },
                 action);
         }
     }
@@ -107,7 +141,8 @@ public:
     auto format(const std::vector<arg_ref>& arguments) const -> std::string
     {
         std::stringstream ss;
-        format(ss, arguments);
+        format_context format_ctx{ ss };
+        format(format_ctx, arguments);
         return std::move(ss).str();
     }
 
@@ -119,13 +154,13 @@ public:
                 ferrugo::core::overloaded{ [&](const print_text& a) { os << a.text; },
                                            [&](const print_argument& a)
                                            {
-                                               if (a.context.empty())
+                                               if (a.context.specifier().empty())
                                                {
                                                    os << "{" << a.index << "}";
                                                }
                                                else
                                                {
-                                                   os << "{" << a.index << ":" << a.context << "}";
+                                                   os << "{" << a.index << ":" << a.context.specifier() << "}";
                                                }
                                            } },
                 action);
@@ -168,7 +203,7 @@ private:
                 }
                 result.push_back(print_text{ make_string_view(begin, bracket) });
 
-                const auto [actual_index, context] = std::invoke(
+                const auto [actual_index, fmt_specifer] = std::invoke(
                     [](std::string_view arg, int current_index) -> std::tuple<int, std::string_view>
                     {
                         const auto colon = std::find_if(std::begin(arg), std::end(arg), is_colon);
@@ -179,7 +214,7 @@ private:
                     },
                     make_string_view(bracket + 1, closing_bracket),
                     arg_index);
-                result.push_back(print_argument{ actual_index, context });
+                result.push_back(print_argument{ actual_index, parse_context{ fmt_specifer } });
                 fmt = make_string_view(closing_bracket + 1, end);
                 ++arg_index;
             }
@@ -219,10 +254,11 @@ struct print_to_fn
         template <class... Args>
         void operator()(Args&&... args) const
         {
-            m_formatter.format(m_os, wrap_args(std::forward<Args>(args)...));
+            format_context format_ctx{ m_os };
+            m_formatter.format(format_ctx, wrap_args(std::forward<Args>(args)...));
             if constexpr (NewLine)
             {
-                m_os << '\n';
+                write_to(format_ctx, '\n');
             }
         }
 
@@ -267,26 +303,26 @@ struct format_fn
 template <class T>
 struct formatter<T, std::enable_if_t<has_ostream_operator<T>{}>>
 {
-    void parse(std::string_view)
+    void parse(const parse_context&)
     {
     }
 
-    void format(std::ostream& os, const T& item) const
+    void format(format_context& ctx, const T& item) const
     {
-        os << item;
+        ctx.stream() << item;
     }
 };
 
 template <>
 struct formatter<bool>
 {
-    void parse(std::string_view)
+    void parse(const parse_context&)
     {
     }
 
-    void format(std::ostream& os, bool item) const
+    void format(format_context& ctx, bool item) const
     {
-        os << std::boolalpha << item;
+        ctx.stream() << std::boolalpha << item;
     }
 };
 
