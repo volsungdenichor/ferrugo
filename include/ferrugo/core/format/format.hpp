@@ -22,13 +22,13 @@ struct formatter;
 template <class... Args>
 std::ostream& write_to(std::ostream& os, Args&&... args)
 {
-    (formatter<std::decay_t<Args>>{}(os, std::forward<Args>(args)), ...);
+    (formatter<std::decay_t<Args>>{}.format(os, std::forward<Args>(args)), ...);
     return os;
 }
 
 struct format_error : std::runtime_error
 {
-    format_error(std::string message) : std::runtime_error{ std::move(message) }
+    explicit format_error(std::string message) : std::runtime_error{ std::move(message) }
     {
     }
 };
@@ -38,13 +38,18 @@ namespace detail
 
 struct arg_ref
 {
-    using arg_printer = void (*)(std::ostream&, const void*);
+    using arg_printer = void (*)(std::ostream&, const void*, std::string_view);
     arg_printer m_printer;
     const void* m_ptr;
 
     template <class T>
     explicit arg_ref(const T& item)
-        : m_printer{ [](std::ostream& os, const void* ptr) { write_to(os, *static_cast<const T*>(ptr)); } }
+        : m_printer{ [](std::ostream& os, const void* ptr, std::string_view context)
+                     {
+                         formatter<T> f{};
+                         f.parse(context);
+                         f.format(os, *static_cast<const T*>(ptr));
+                     } }
         , m_ptr{ std::addressof(item) }
     {
     }
@@ -52,10 +57,9 @@ struct arg_ref
     arg_ref(const arg_ref&) = default;
     arg_ref(arg_ref&&) = default;
 
-    friend std::ostream& operator<<(std::ostream& os, const arg_ref& item)
+    void print(std::ostream& os, std::string_view context) const
     {
-        item.m_printer(os, item.m_ptr);
-        return os;
+        m_printer(os, m_ptr, context);
     }
 };
 
@@ -79,6 +83,7 @@ private:
     struct print_argument
     {
         int index;
+        std::string_view context;
     };
 
     using print_action = std::variant<print_text, print_argument>;
@@ -94,7 +99,7 @@ public:
         {
             std::visit(
                 ferrugo::core::overloaded{ [&](const print_text& a) { os << a.text; },
-                                           [&](const print_argument& a) { os << arguments.at(a.index); } },
+                                           [&](const print_argument& a) { arguments.at(a.index).print(os, a.context); } },
                 action);
         }
     }
@@ -104,6 +109,28 @@ public:
         std::stringstream ss;
         format(ss, arguments);
         return std::move(ss).str();
+    }
+
+    friend std::ostream& operator<<(std::ostream& os, const format_string& item)
+    {
+        for (const auto& action : item.m_actions)
+        {
+            std::visit(
+                ferrugo::core::overloaded{ [&](const print_text& a) { os << a.text; },
+                                           [&](const print_argument& a)
+                                           {
+                                               if (a.context.empty())
+                                               {
+                                                   os << "{" << a.index << "}";
+                                               }
+                                               else
+                                               {
+                                                   os << "{" << a.index << ":" << a.context << "}";
+                                               }
+                                           } },
+                action);
+        }
+        return os;
     }
 
 private:
@@ -141,17 +168,18 @@ private:
                 }
                 result.push_back(print_text{ make_string_view(begin, bracket) });
 
-                const auto actual_index = std::invoke(
-                    [](std::string_view arg, int current_index) -> int
+                const auto [actual_index, context] = std::invoke(
+                    [](std::string_view arg, int current_index) -> std::tuple<int, std::string_view>
                     {
                         const auto colon = std::find_if(std::begin(arg), std::end(arg), is_colon);
                         const auto index_part = make_string_view(std::begin(arg), colon);
                         const auto fmt_part = make_string_view(colon != std::end(arg) ? colon + 1 : colon, std::end(arg));
-                        return !index_part.empty() ? parse_int(index_part) : current_index;
+                        const auto index = !index_part.empty() ? parse_int(index_part) : current_index;
+                        return { index, fmt_part };
                     },
                     make_string_view(bracket + 1, closing_bracket),
                     arg_index);
-                result.push_back(print_argument{ actual_index });
+                result.push_back(print_argument{ actual_index, context });
                 fmt = make_string_view(closing_bracket + 1, end);
                 ++arg_index;
             }
@@ -197,6 +225,11 @@ struct print_to_fn
                 m_os << '\n';
             }
         }
+
+        friend std::ostream& operator<<(std::ostream& os, const impl& item)
+        {
+            return os << item.m_formatter;
+        }
     };
 
     auto operator()(std::string_view fmt) const -> impl
@@ -216,6 +249,11 @@ struct format_fn
         {
             return m_formatter.format(wrap_args(std::forward<Args>(args)...));
         }
+
+        friend std::ostream& operator<<(std::ostream& os, const impl& item)
+        {
+            return os << item.m_formatter;
+        }
     };
 
     auto operator()(std::string_view fmt) const -> impl
@@ -229,7 +267,11 @@ struct format_fn
 template <class T>
 struct formatter<T, std::enable_if_t<has_ostream_operator<T>{}>>
 {
-    void operator()(std::ostream& os, const T& item) const
+    void parse(std::string_view)
+    {
+    }
+
+    void format(std::ostream& os, const T& item) const
     {
         os << item;
     }
@@ -238,7 +280,11 @@ struct formatter<T, std::enable_if_t<has_ostream_operator<T>{}>>
 template <>
 struct formatter<bool>
 {
-    void operator()(std::ostream& os, bool item) const
+    void parse(std::string_view)
+    {
+    }
+
+    void format(std::ostream& os, bool item) const
     {
         os << std::boolalpha << item;
     }

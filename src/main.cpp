@@ -40,7 +40,11 @@ struct enum_formatter
         init(m_values, value, name, tail...);
     }
 
-    void operator()(std::ostream& os, const T& item) const
+    void parse(std::string_view)
+    {
+    }
+
+    void format(std::ostream& os, const T& item) const
     {
         ferrugo::core::write_to(os, m_values.at(item));
     }
@@ -69,7 +73,11 @@ struct struct_formatter
         init(m_values, field, name, tail...);
     }
 
-    void operator()(std::ostream& os, const T& item) const
+    void parse(std::string_view)
+    {
+    }
+
+    void format(std::ostream& os, const T& item) const
     {
         os << "{";
         for (std::size_t i = 0; i < m_values.size(); ++i)
@@ -117,7 +125,8 @@ struct ferrugo::core::formatter<person> : struct_formatter<person>
 void run()
 {
     const std::vector<std::string> v{ "Ala", "Beata", "Celina", "Dezyderiusz" };
-    const auto p = ferrugo::core::println("{}");
+    const auto p = ferrugo::core::println("{0:Bonjour}");
+    std::cout << p << std::endl;
     p(v);
     p(std::pair{ 1, 'X' });
     p(std::tuple{ 'X', 3.14, 10, true, std::cref(v) });
