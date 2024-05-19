@@ -86,12 +86,6 @@ struct range_interface
     }
 };
 
-template <class Impl>
-auto make_range_interface(Impl&& impl) -> range_interface<std::decay_t<Impl>>
-{
-    return { std::forward<Impl>(impl) };
-}
-
 template <class T>
 struct is_range_interface : std::false_type
 {

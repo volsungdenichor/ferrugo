@@ -1,5 +1,7 @@
 #include <cassert>
 #include <ferrugo/core/format.hpp>
+#include <ferrugo/core/format/enum_formatter.hpp>
+#include <ferrugo/core/format/struct_formatter.hpp>
 #include <ferrugo/core/optional.hpp>
 #include <ferrugo/core/overloaded.hpp>
 #include <ferrugo/core/pipeline.hpp>
@@ -7,6 +9,7 @@
 #include <ferrugo/core/type_name.hpp>
 #include <ferrugo/core/type_traits.hpp>
 #include <iostream>
+#include <list>
 #include <map>
 #include <optional>
 #include <sstream>
@@ -15,122 +18,77 @@
 #include <variant>
 #include <vector>
 
-enum class sex_t
+template <template <class...> class Op, class... Args>
+using is_detected = ferrugo::core::is_detected<Op, Args...>;
+template <class T>
+struct type
 {
-    male,
-    female
+    template <template <class...> class... Ops>
+    using satisfies_all = std::conjunction<is_detected<Ops, T>...>;
+
+    template <template <class...> class... Ops>
+    using satisfies_any = std::disjunction<is_detected<Ops, T>...>;
+
+    template <template <class...> class Op>
+    using satisfies = satisfies_all<Op>;
 };
 
-struct person
+template <class... Types>
+struct type_pack
 {
-    std::string name;
-    int age;
-    sex_t sex;
+    template <template <class...> class Op>
+    using each_satisfies = std::conjunction<is_detected<Op, Types>...>;
+
+    template <template <class...> class Op>
+    using any_satisfies = std::disjunction<is_detected<Op, Types>...>;
 };
 
 template <class T>
-struct enum_formatter
+struct type_pack_for_impl;
+
+template <class... Types>
+struct type_pack_for_impl<std::tuple<Types...>>
 {
-    std::map<T, std::string_view> m_values;
+    using type = type_pack<Types...>;
+};
 
-    template <class... Tail>
-    explicit enum_formatter(T value, std::string_view name, const Tail&... tail)
-    {
-        static_assert(sizeof...(tail) % 2 == 0, "Sequence of (value, name) required");
-        init(m_values, value, name, tail...);
-    }
-
-    void parse(std::string_view)
-    {
-    }
-
-    void format(std::ostream& os, const T& item) const
-    {
-        ferrugo::core::write_to(os, m_values.at(item));
-    }
-
-    template <class... Tail>
-    static void init(std::map<T, std::string_view>& result, T value, std::string_view name, const Tail&... tail)
-    {
-        result.emplace(value, name);
-        if constexpr (sizeof...(tail) > 0)
-        {
-            init(result, tail...);
-        }
-    }
+template <class... Types>
+struct type_pack_for_impl<std::pair<Types...>>
+{
+    using type = type_pack<Types...>;
 };
 
 template <class T>
-struct struct_formatter
-{
-    using field_info = std::tuple<std::function<void(std::ostream&, const T&)>, std::string_view>;
-    std::vector<field_info> m_values;
+using type_pack_for = typename type_pack_for_impl<T>::type;
 
-    template <class Type, class... Tail>
-    explicit struct_formatter(Type T::*field, std::string_view name, const Tail&... tail)
-    {
-        static_assert(sizeof...(tail) % 2 == 0, "Sequence of (field, name) required");
-        init(m_values, field, name, tail...);
-    }
+template <class T>
+using is_arithmetic = std::enable_if_t<std::is_arithmetic_v<T>>;
 
-    void parse(std::string_view)
-    {
-    }
-
-    void format(std::ostream& os, const T& item) const
-    {
-        os << "{";
-        for (std::size_t i = 0; i < m_values.size(); ++i)
-        {
-            if (i > 0)
-            {
-                os << "; ";
-            }
-            const auto& [func, name] = m_values[i];
-            os << name << "=";
-            std::invoke(func, os, item);
-        }
-        os << "}";
-    }
-
-    template <class Type, class... Tail>
-    static void init(std::vector<field_info>& result, Type T::*field, std::string_view name, const Tail&... tail)
-    {
-        auto f
-            = [=](std::ostream& os, const T& item) { ferrugo::core::write_to(os, std::invoke(std::mem_fn(field), item)); };
-        result.emplace_back(f, name);
-        if constexpr (sizeof...(tail) > 0)
-        {
-            init(result, tail...);
-        }
-    }
-};
-
-template <>
-struct ferrugo::core::formatter<sex_t> : enum_formatter<sex_t>
-{
-    formatter() : enum_formatter{ sex_t::male, "male", sex_t::female, "female" }
-    {
-    }
-};
-
-template <>
-struct ferrugo::core::formatter<person> : struct_formatter<person>
-{
-    formatter() : struct_formatter{ &person::name, "name", &person::age, "age", &person::sex, "sex" }
-    {
-    }
-};
+template <class T>
+using is_unsigned = std::enable_if_t<std::is_unsigned_v<T>>;
 
 void run()
 {
-    const std::vector<std::string> v{ "Ala", "Beata", "Celina", "Dezyderiusz" };
-    const auto p = ferrugo::core::println("{0:Bonjour}");
-    std::cout << p << std::endl;
-    p(v);
-    p(std::pair{ 1, 'X' });
-    p(std::tuple{ 'X', 3.14, 10, true, std::cref(v) });
-    p(person{ "Adam", 57, sex_t::male });
+    using namespace ferrugo;
+    std::cout << type_pack<int, double>::each_satisfies<is_arithmetic>{} << std::endl;
+    std::cout << type_pack<int, double>::each_satisfies<is_unsigned>{} << std::endl;
+    return;
+
+    std::vector<int> a = { 1, 2, 3, 4 };
+    const std::vector<double> b = { 1.5, 2.5, 3.5, 4.5 };
+    const std::array<std::string, 2> c = { "AAA", "BBB" };
+    const auto r = core::all(core::ref_range(a), core::ref_range(b), core::ref_range(c));
+    auto it = std::begin(r) + 2;
+    --it;
+    const auto print = core::println("{}");
+    print(*it);
+    using range_type = decltype(r);
+    print(core::type_name<core::range_category_t<range_type>>());
+    print(core::type_name<core::range_reference_t<range_type>>());
+    for (const auto& item : r)
+    {
+        print(item);
+    }
 }
 
 void print_error()

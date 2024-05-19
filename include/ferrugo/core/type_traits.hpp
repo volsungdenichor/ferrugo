@@ -80,9 +80,6 @@ struct convertible_to
 template <class T>
 using is_assignable_impl = decltype(std::declval<T>() = std::declval<convertible_to_any>());
 
-template <class T>
-using has_ostream_operator_impl = decltype(std::declval<std::ostream&>() << std::declval<T>());
-
 }  // namespace detail
 
 template <bool C>
@@ -90,11 +87,6 @@ using require = typename std::enable_if<C, int>::type;
 
 template <class...>
 struct always_false : std::false_type
-{
-};
-
-template <class T>
-struct has_ostream_operator : is_detected<detail::has_ostream_operator_impl, T>
 {
 };
 
@@ -146,6 +138,136 @@ struct type_identity
 
 template <class T>
 using type_identity_t = typename type_identity<T>::type;
+
+template <class T>
+struct type
+{
+    template <template <class...> class... Ops>
+    using satisfies_all = std::conjunction<is_detected<Ops, T>...>;
+
+    template <template <class...> class... Ops>
+    using satisfies_any = std::disjunction<is_detected<Ops, T>...>;
+
+    template <template <class...> class Op>
+    using satisfies = satisfies_all<Op>;
+};
+
+template <class... Types>
+struct type_pack
+{
+    template <template <class...> class Op>
+    using each_satisfies = std::conjunction<is_detected<Op, Types>...>;
+
+    template <template <class...> class Op>
+    using any_satisfies = std::disjunction<is_detected<Op, Types>...>;
+};
+
+namespace detail
+{
+
+template <class T>
+struct type_pack_for_impl
+{
+    using type = type_pack<T>;
+};
+
+template <class... Types>
+struct type_pack_for_impl<std::tuple<Types...>>
+{
+    using type = type_pack<Types...>;
+};
+
+template <class... Types>
+struct type_pack_for_impl<std::pair<Types...>>
+{
+    using type = type_pack<Types...>;
+};
+
+}  // namespace detail
+
+template <class T>
+using type_pack_for = typename detail::type_pack_for_impl<T>::type;
+
+template <class L, class R = L>
+using addition = decltype(std::declval<L>() + std::declval<R>());
+
+template <class L, class R = L>
+using addition_assignment = decltype(std::declval<L&>() += std::declval<R>());
+
+template <class L, class R = L>
+using subtraction = decltype(std::declval<L>() - std::declval<R>());
+
+template <class L, class R = L>
+using subtraction_assignment = decltype(std::declval<L&>() -= std::declval<R>());
+
+template <class L, class R = L>
+using multiplication = decltype(std::declval<L>() * std::declval<R>());
+
+template <class L, class R = L>
+using multiplication_assignment = decltype(std::declval<L&>() *= std::declval<R>());
+
+template <class L, class R = L>
+using division = decltype(std::declval<L>() / std::declval<R>());
+
+template <class L, class R = L>
+using division_assignment = decltype(std::declval<L&>() /= std::declval<R>());
+
+template <class L, class R = L>
+using remainder = decltype(std::declval<L>() % std::declval<R>());
+
+template <class L, class R = L>
+using remainder_assignment = decltype(std::declval<L&>() %= std::declval<R>());
+
+template <class L, class R = L>
+using bitwise_left_shift = decltype(std::declval<L>() << std::declval<R>());
+
+template <class L, class R = L>
+using bitwise_left_shift_assignment = decltype(std::declval<L&>() <<= std::declval<R>());
+
+template <class L, class R = L>
+using bitwise_right_shift = decltype(std::declval<L>() >> std::declval<R>());
+
+template <class L, class R = L>
+using bitwise_right_shift_assignment = decltype(std::declval<L&>() >>= std::declval<R>());
+
+template <class T>
+using pre_increment = decltype(++std::declval<T&>());
+
+template <class T>
+using post_increment = decltype(std::declval<T&>()++);
+
+template <class T>
+using pre_decrement = decltype(--std::declval<T&>());
+
+template <class T>
+using post_decrement = decltype(std::declval<T&>()--);
+
+template <class L, class R = L>
+using equal_to = decltype(std::declval<L>() == std::declval<R>());
+
+template <class L, class R = L>
+using not_equal_to = decltype(std::declval<L>() != std::declval<R>());
+
+template <class L, class R = L>
+using less_than = decltype(std::declval<L>() < std::declval<R>());
+
+template <class L, class R = L>
+using greater_than = decltype(std::declval<L>() > std::declval<R>());
+
+template <class L, class R = L>
+using less_than_or_equal_to = decltype(std::declval<L>() <= std::declval<R>());
+
+template <class L, class R = L>
+using greater_than_or_equal_to = decltype(std::declval<L>() >= std::declval<R>());
+
+template <class T, class N>
+using subscript = decltype(std::declval<T&>()[std::declval<N>()]);
+
+template <class T>
+using indirection = decltype(*std::declval<T&>());
+
+template <class T>
+using has_ostream_operator = bitwise_left_shift<std::ostream, T>;
 
 }  // namespace core
 
