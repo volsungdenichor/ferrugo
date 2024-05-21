@@ -139,54 +139,23 @@ struct type_identity
 template <class T>
 using type_identity_t = typename type_identity<T>::type;
 
-template <class T>
-struct type
-{
-    template <template <class...> class... Ops>
-    using satisfies_all = std::conjunction<is_detected<Ops, T>...>;
+template <class T, template <class...> class... Ops>
+struct satisfies_all : std::conjunction<is_detected<Ops, T>...>{};
 
-    template <template <class...> class... Ops>
-    using satisfies_any = std::disjunction<is_detected<Ops, T>...>;
+template <class T, template <class...> class... Ops>
+struct satisfies_any : std::disjunction<is_detected<Ops, T>...>{};
 
-    template <template <class...> class Op>
-    using satisfies = satisfies_all<Op>;
-};
+template <class T, template <class...> class Op>
+using satisfies = satisfies_all<T, Op>;
 
-template <class... Types>
-struct type_pack
-{
-    template <template <class...> class Op>
-    using each_satisfies = std::conjunction<is_detected<Op, Types>...>;
+template <class T, template <class...> class Op, class = void>
+struct each_satisfies;
 
-    template <template <class...> class Op>
-    using any_satisfies = std::disjunction<is_detected<Op, Types>...>;
-};
+template <class... Types, template <class...> class Op>
+struct each_satisfies<std::tuple<Types...>, Op> : std::conjunction<is_detected<Op, Types>...>{};
 
-namespace detail
-{
-
-template <class T>
-struct type_pack_for_impl
-{
-    using type = type_pack<T>;
-};
-
-template <class... Types>
-struct type_pack_for_impl<std::tuple<Types...>>
-{
-    using type = type_pack<Types...>;
-};
-
-template <class... Types>
-struct type_pack_for_impl<std::pair<Types...>>
-{
-    using type = type_pack<Types...>;
-};
-
-}  // namespace detail
-
-template <class T>
-using type_pack_for = typename detail::type_pack_for_impl<T>::type;
+template <class... Types, template <class...> class Op>
+struct each_satisfies<std::pair<Types...>, Op> : std::conjunction<is_detected<Op, Types>...>{};
 
 template <class L, class R = L>
 using addition = decltype(std::declval<L>() + std::declval<R>());

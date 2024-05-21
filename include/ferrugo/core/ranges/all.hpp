@@ -51,7 +51,7 @@ struct ranges_pack
             return deref(m_iters, index_seq{});
         }
 
-        template <class It = iterators_type, require<typename type_pack_for<It>::each_satisfies<pre_increment>{}> = 0>
+        template <class It = iterators_type, require<each_satisfies<It, pre_increment>{}> = 0>
         void inc()
         {
             static const auto impl = []<std::size_t... I>(auto& it, std::index_sequence<I...>)
@@ -61,7 +61,7 @@ struct ranges_pack
             return impl(m_iters, index_seq{});
         }
 
-        template <class It = iterators_type, require<typename type_pack_for<It>::each_satisfies<pre_decrement>{}> = 0>
+        template <class It = iterators_type, require<each_satisfies<It, pre_decrement>{}> = 0>
         void dec()
         {
             static const auto impl = []<std::size_t... I>(auto& it, std::index_sequence<I...>)
@@ -71,7 +71,7 @@ struct ranges_pack
             return impl(m_iters, index_seq{});
         }
 
-        template <class It = iterators_type, require<typename type_pack_for<It>::each_satisfies<equal_to>{}> = 0>
+        template <class It = iterators_type, require<each_satisfies<It, equal_to>{}> = 0>
         bool is_equal(const iter& other) const
         {
             static const auto impl = []<std::size_t... I>(auto& it, auto& o, std::index_sequence<I...>)
@@ -81,7 +81,7 @@ struct ranges_pack
             return impl(m_iters, other.m_iters, index_seq{});
         }
 
-        template <class It = iterators_type, require<typename type_pack_for<It>::each_satisfies<less_than>{}> = 0>
+        template <class It = iterators_type, require<each_satisfies<It, less_than>{}> = 0>
         bool is_less(const iter& other) const
         {
             static const auto impl = []<std::size_t... I>(auto& it, auto& o, std::index_sequence<I...>)
@@ -91,7 +91,7 @@ struct ranges_pack
             return impl(m_iters, other.m_iters, index_seq{});
         }
 
-        template <class It = iterators_type, require<typename type_pack_for<It>::each_satisfies<subtraction>{}> = 0>
+        template <class It = iterators_type, require<each_satisfies<It, subtraction>{}> = 0>
         std::ptrdiff_t distance_to(const iter& other) const
         {
             static const auto min_value = [](std::ptrdiff_t v0, auto... tail) -> std::ptrdiff_t
@@ -115,9 +115,9 @@ struct ranges_pack
         }
 
         template <class T>
-        using advance_impl = addition_assignment<T&, std::ptrdiff_t>;
+        using advance_by_offset = addition_assignment<T, std::ptrdiff_t>;
 
-        template <class It = iterators_type, require<typename type_pack_for<It>::each_satisfies<advance_impl>{}> = 0>
+        template <class It = iterators_type, require<each_satisfies<It, advance_by_offset>{}> = 0>
         void advance(std::ptrdiff_t offset)
         {
             static const auto impl = []<std::size_t... I>(auto& it, std::ptrdiff_t off, std::index_sequence<I...>)

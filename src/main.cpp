@@ -18,61 +18,9 @@
 #include <variant>
 #include <vector>
 
-template <template <class...> class Op, class... Args>
-using is_detected = ferrugo::core::is_detected<Op, Args...>;
-template <class T>
-struct type
-{
-    template <template <class...> class... Ops>
-    using satisfies_all = std::conjunction<is_detected<Ops, T>...>;
-
-    template <template <class...> class... Ops>
-    using satisfies_any = std::disjunction<is_detected<Ops, T>...>;
-
-    template <template <class...> class Op>
-    using satisfies = satisfies_all<Op>;
-};
-
-template <class... Types>
-struct type_pack
-{
-    template <template <class...> class Op>
-    using each_satisfies = std::conjunction<is_detected<Op, Types>...>;
-
-    template <template <class...> class Op>
-    using any_satisfies = std::disjunction<is_detected<Op, Types>...>;
-};
-
-template <class T>
-struct type_pack_for_impl;
-
-template <class... Types>
-struct type_pack_for_impl<std::tuple<Types...>>
-{
-    using type = type_pack<Types...>;
-};
-
-template <class... Types>
-struct type_pack_for_impl<std::pair<Types...>>
-{
-    using type = type_pack<Types...>;
-};
-
-template <class T>
-using type_pack_for = typename type_pack_for_impl<T>::type;
-
-template <class T>
-using is_arithmetic = std::enable_if_t<std::is_arithmetic_v<T>>;
-
-template <class T>
-using is_unsigned = std::enable_if_t<std::is_unsigned_v<T>>;
-
 void run()
 {
     using namespace ferrugo;
-    std::cout << type_pack<int, double>::each_satisfies<is_arithmetic>{} << std::endl;
-    std::cout << type_pack<int, double>::each_satisfies<is_unsigned>{} << std::endl;
-    return;
 
     std::vector<int> a = { 1, 2, 3, 4 };
     const std::vector<double> b = { 1.5, 2.5, 3.5, 4.5 };

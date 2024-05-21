@@ -301,7 +301,7 @@ struct format_fn
 }  // namespace detail
 
 template <class T>
-struct formatter<T, std::enable_if_t<typename type<T>::satisfies<has_ostream_operator>{}>>
+struct formatter<T, std::enable_if_t<satisfies<T, has_ostream_operator>{}>>
 {
     void parse(const parse_context&)
     {
