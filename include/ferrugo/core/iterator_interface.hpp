@@ -12,25 +12,25 @@ namespace detail
 {
 
 template <class T>
-using has_deref_impl = decltype(std::declval<T>().deref());
+using has_deref = decltype(std::declval<T>().deref());
 
 template <class T>
-using has_inc_impl = decltype(std::declval<T>().inc());
+using has_inc = decltype(std::declval<T>().inc());
 
 template <class T>
-using has_dec_impl = decltype(std::declval<T>().dec());
+using has_dec = decltype(std::declval<T>().dec());
 
 template <class T>
-using has_advance_impl = decltype(std::declval<T>().advance(std::declval<convertible_to<std::is_integral>>()));
+using has_advance = decltype(std::declval<T>().advance(std::declval<convertible_to<std::is_integral>>()));
 
 template <class T>
-using has_is_equal_impl = decltype(std::declval<T>().is_equal(std::declval<T>()));
+using has_is_equal = decltype(std::declval<T>().is_equal(std::declval<T>()));
 
 template <class T>
-using has_is_less_impl = decltype(std::declval<T>().is_less(std::declval<T>()));
+using has_is_less = decltype(std::declval<T>().is_less(std::declval<T>()));
 
 template <class T>
-using has_distance_to_impl = decltype(std::declval<T>().distance_to(std::declval<T>()));
+using has_distance_to = decltype(std::declval<T>().distance_to(std::declval<T>()));
 
 template <class T, class = std::void_t<>>
 struct difference_type_impl
@@ -39,7 +39,7 @@ struct difference_type_impl
 };
 
 template <class T>
-struct difference_type_impl<T, std::void_t<has_distance_to_impl<T>>>
+struct difference_type_impl<T, std::void_t<has_distance_to<T>>>
 {
     using type = decltype(std::declval<T>().distance_to(std::declval<T>()));
 };
@@ -48,41 +48,6 @@ struct difference_type_impl<T, std::void_t<has_distance_to_impl<T>>>
 
 template <class T>
 using difference_type = typename detail::difference_type_impl<T>::type;
-
-template <class T>
-struct has_deref : is_detected<detail::has_deref_impl, T>
-{
-};
-
-template <class T>
-struct has_inc : is_detected<detail::has_inc_impl, T>
-{
-};
-
-template <class T>
-struct has_dec : is_detected<detail::has_dec_impl, T>
-{
-};
-
-template <class T>
-struct has_advance : is_detected<detail::has_advance_impl, T>
-{
-};
-
-template <class T>
-struct has_is_equal : is_detected<detail::has_is_equal_impl, T>
-{
-};
-
-template <class T>
-struct has_is_less : is_detected<detail::has_is_less_impl, T>
-{
-};
-
-template <class T>
-struct has_distance_to : is_detected<detail::has_distance_to_impl, T>
-{
-};
 
 template <class T>
 struct pointer_proxy
@@ -115,7 +80,7 @@ struct iterator_interface
         return *this;
     }
 
-    static_assert(has_deref<Impl>{}, ".deref required");
+    static_assert(satisfies<Impl, detail::has_deref>{}, ".deref required");
     static_assert(std::is_default_constructible<Impl>{}, "iterator_interface: default constructible Impl required");
 
     using reference = decltype(m_impl.deref());
@@ -133,10 +98,10 @@ private:
         return { **this };
     }
 
-    template <class I = Impl, require<has_advance<I>{} || has_inc<I>{}> = 0>
+    template <class I = Impl, require<satisfies_any<I, detail::has_advance, detail::has_inc>{}> = 0>
     void inc()
     {
-        if constexpr (has_inc<I>{})
+        if constexpr (satisfies<I, detail::has_inc>{})
         {
             m_impl.inc();
         }
@@ -146,10 +111,10 @@ private:
         }
     }
 
-    template <class I = Impl, require<has_advance<I>{} || has_dec<I>{}> = 0>
+    template <class I = Impl, require<satisfies_any<I, detail::has_advance, detail::has_dec>{}> = 0>
     void dec()
     {
-        if constexpr (has_dec<I>{})
+        if constexpr (satisfies<I, detail::has_dec>{})
         {
             m_impl.dec();
         }
@@ -159,10 +124,10 @@ private:
         }
     }
 
-    template <class I = Impl, require<has_is_equal<I>{} || has_distance_to<I>{}> = 0>
+    template <class I = Impl, require<satisfies_any<I, detail::has_is_equal, detail::has_distance_to>{}> = 0>
     bool is_equal(const Impl& other) const
     {
-        if constexpr (has_is_equal<I>{})
+        if constexpr (satisfies<I, detail::has_is_equal>{})
         {
             return m_impl.is_equal(other);
         }
@@ -172,10 +137,10 @@ private:
         }
     }
 
-    template <class I = Impl, require<has_is_less<I>{} || has_distance_to<I>{}> = 0>
+    template <class I = Impl, require<satisfies_any<I, detail::has_is_less, detail::has_distance_to>{}> = 0>
     bool is_less(const Impl& other) const
     {
-        if constexpr (has_is_less<I>{})
+        if constexpr (satisfies<I, detail::has_is_less>{})
         {
             return m_impl.is_less(other);
         }
@@ -196,14 +161,14 @@ public:
         return get_pointer();
     }
 
-    template <class I = Impl, require<has_advance<I>{} || has_inc<I>{}> = 0>
+    template <class I = Impl, require<satisfies_any<I, detail::has_advance, detail::has_inc>{}> = 0>
     iterator_interface& operator++()
     {
         inc();
         return *this;
     }
 
-    template <class I = Impl, require<has_advance<I>{} || has_inc<I>{}> = 0>
+    template <class I = Impl, require<satisfies_any<I, detail::has_advance, detail::has_inc>{}> = 0>
     iterator_interface operator++(int)
     {
         iterator_interface tmp{ *this };
@@ -211,14 +176,14 @@ public:
         return tmp;
     }
 
-    template <class I = Impl, require<has_advance<I>{} || has_dec<I>{}> = 0>
+    template <class I = Impl, require<satisfies_any<I, detail::has_advance, detail::has_dec>{}> = 0>
     iterator_interface& operator--()
     {
         dec();
         return *this;
     }
 
-    template <class I = Impl, require<has_advance<I>{} || has_dec<I>{}> = 0>
+    template <class I = Impl, require<satisfies_any<I, detail::has_advance, detail::has_dec>{}> = 0>
     iterator_interface operator--(int)
     {
         iterator_interface tmp{ *this };
@@ -226,80 +191,80 @@ public:
         return tmp;
     }
 
-    template <class D, class I = Impl, require<has_advance<I>{} && std::is_integral<D>{}> = 0>
+    template <class D, class I = Impl, require<satisfies<I, detail::has_advance>{} && std::is_integral<D>{}> = 0>
     friend iterator_interface& operator+=(iterator_interface& it, D offset)
     {
         it.m_impl.advance(offset);
         return it;
     }
 
-    template <class D, class I = Impl, require<has_advance<I>{} && std::is_integral<D>{}> = 0>
+    template <class D, class I = Impl, require<satisfies<I, detail::has_advance>{} && std::is_integral<D>{}> = 0>
     friend iterator_interface operator+(iterator_interface it, D offset)
     {
         return it += offset;
     }
 
-    template <class D, class I = Impl, require<has_advance<I>{} && std::is_integral<D>{}> = 0>
+    template <class D, class I = Impl, require<satisfies<I, detail::has_advance>{} && std::is_integral<D>{}> = 0>
     friend iterator_interface operator+(D offset, iterator_interface it)
     {
         return it + offset;
     }
 
-    template <class D, class I = Impl, require<has_advance<I>{} && std::is_integral<D>{}> = 0>
+    template <class D, class I = Impl, require<satisfies<I, detail::has_advance>{} && std::is_integral<D>{}> = 0>
     friend iterator_interface& operator-=(iterator_interface& it, D offset)
     {
         return it += -offset;
     }
 
-    template <class D, class I = Impl, require<has_advance<I>{} && std::is_integral<D>{}> = 0>
+    template <class D, class I = Impl, require<satisfies<I, detail::has_advance>{} && std::is_integral<D>{}> = 0>
     friend iterator_interface operator-(iterator_interface it, D offset)
     {
         return it -= offset;
     }
 
-    template <class D, class I = Impl, require<has_advance<I>{} && std::is_integral<D>{}> = 0>
+    template <class D, class I = Impl, require<satisfies<I, detail::has_advance>{} && std::is_integral<D>{}> = 0>
     reference operator[](D offset) const
     {
         return *(*this + offset);
     }
 
-    template <class I = Impl, require<has_is_equal<I>{} || has_distance_to<I>{}> = 0>
+    template <class I = Impl, require<satisfies_any<I, detail::has_is_equal, detail::has_distance_to>{}> = 0>
     friend bool operator==(const iterator_interface& lhs, const iterator_interface& rhs)
     {
         return lhs.is_equal(rhs.m_impl);
     }
 
-    template <class I = Impl, require<has_is_equal<I>{} || has_distance_to<I>{}> = 0>
+    template <class I = Impl, require<satisfies_any<I, detail::has_is_equal, detail::has_distance_to>{}> = 0>
     friend bool operator!=(const iterator_interface& lhs, const iterator_interface& rhs)
     {
         return !(lhs == rhs);
     }
 
-    template <class I = Impl, require<has_is_less<I>{} || has_distance_to<I>{}> = 0>
+    template <class I = Impl, require<satisfies_any<I, detail::has_is_equal, detail::has_distance_to>{}> = 0>
     friend bool operator<(const iterator_interface& lhs, const iterator_interface& rhs)
     {
         return lhs.is_less(rhs.m_impl);
     }
 
-    template <class I = Impl, require<has_is_less<I>{} || has_distance_to<I>{}> = 0>
+    template <class I = Impl, require<satisfies_any<I, detail::has_is_less, detail::has_distance_to>{}> = 0>
     friend bool operator>(const iterator_interface& lhs, const iterator_interface& rhs)
     {
         return rhs < lhs;
     }
 
-    template <class I = Impl, require<has_is_less<I>{} || has_distance_to<I>{}> = 0>
+    template <class I = Impl, require<satisfies_any<I, detail::has_is_less, detail::has_distance_to>{}> = 0>
     friend bool operator<=(const iterator_interface& lhs, const iterator_interface& rhs)
     {
         return !(lhs > rhs);
     }
 
-    template <class I = Impl, require<has_is_less<I>{} || has_distance_to<I>{}> = 0>
+    template <class I = Impl, require<satisfies_any<I, detail::has_is_less, detail::has_distance_to>{}> = 0>
     friend bool operator>=(const iterator_interface& lhs, const iterator_interface& rhs)
     {
         return !(lhs < rhs);
     }
 
-    template <class I = Impl, require<has_distance_to<I>{}> = 0>
+    template <class I = Impl, require<satisfies<I, detail::has_distance_to>{}> = 0>
     friend auto operator-(const iterator_interface& lhs, const iterator_interface& rhs) -> difference_type<I>
     {
         return rhs.m_impl.distance_to(lhs.m_impl);
@@ -310,9 +275,12 @@ template <class T, class = std::void_t<>>
 struct iterator_category_impl
 {
     using type = std::conditional_t<
-        has_advance<T>{} && has_distance_to<T>{},
+        satisfies_all<T, detail::has_advance, detail::has_distance_to>{},
         std::random_access_iterator_tag,
-        std::conditional_t<has_dec<T>{} || has_advance<T>{}, std::bidirectional_iterator_tag, std::forward_iterator_tag>>;
+        std::conditional_t<
+            satisfies_any<T, detail::has_dec, detail::has_advance>{},
+            std::bidirectional_iterator_tag,
+            std::forward_iterator_tag>>;
 };
 
 template <class T>
