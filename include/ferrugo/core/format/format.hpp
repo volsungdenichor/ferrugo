@@ -116,7 +116,6 @@ private:
     {
         int index;
         parse_context context;
-        // std::string_view specifier;
     };
 
     using print_action = std::variant<print_text, print_argument>;
@@ -245,7 +244,6 @@ private:
 template <bool NewLine = false>
 struct print_to_fn
 {
-    std::ostream& m_os;
     struct impl
     {
         std::ostream& m_os;
@@ -268,9 +266,14 @@ struct print_to_fn
         }
     };
 
+    auto operator()(std::ostream& os, std::string_view fmt) const -> impl
+    {
+        return impl{ os, format_string{ fmt } };
+    }
+
     auto operator()(std::string_view fmt) const -> impl
     {
-        return impl{ m_os, format_string{ fmt } };
+        return impl{ std::cout, format_string{ fmt } };
     }
 };
 
@@ -295,6 +298,23 @@ struct format_fn
     auto operator()(std::string_view fmt) const -> impl
     {
         return impl{ format_string{ fmt } };
+    }
+};
+
+struct join_fn
+{
+    template <class Iter>
+    struct impl
+    {
+        Iter m_begin;
+        Iter m_end;
+        std::string_view m_separator;
+    };
+
+    template <class Range>
+    auto operator()(Range&& range, std::string_view separator) const -> impl<iterator_t<Range>>
+    {
+        return impl<iterator_t<Range>>{ std::begin(range), std::end(range), separator };
     }
 };
 
@@ -326,8 +346,33 @@ struct formatter<bool>
     }
 };
 
-static constexpr inline auto print = detail::print_to_fn<>{ std::cout };
-static constexpr inline auto println = detail::print_to_fn<true>{ std::cout };
+template <class Iter>
+struct formatter<detail::join_fn::impl<Iter>>
+{
+    void parse(const parse_context&)
+    {
+    }
+
+    void format(format_context& ctx, const detail::join_fn::impl<Iter>& item) const
+    {
+        auto it = item.m_begin;
+        auto end = item.m_end;
+        if (it == end)
+        {
+            return;
+        }
+        write_to(ctx, *it++);
+        for (; it != end; ++it)
+        {
+            write_to(ctx, item.m_separator, *it);
+        }
+    }
+};
+
+static constexpr inline auto join = detail::join_fn{};
+
+static constexpr inline auto print = detail::print_to_fn<>{};
+static constexpr inline auto println = detail::print_to_fn<true>{};
 
 static constexpr inline auto format = detail::format_fn{};
 

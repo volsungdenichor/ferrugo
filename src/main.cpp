@@ -1,16 +1,21 @@
+#include <algorithm>
 #include <cassert>
+#include <cstdint>
+#include <cuchar>
+#include <ferrugo/core/ansi.hpp>
+#include <ferrugo/core/arrays/array.hpp>
 #include <ferrugo/core/format.hpp>
-#include <ferrugo/core/format/enum_formatter.hpp>
-#include <ferrugo/core/format/struct_formatter.hpp>
 #include <ferrugo/core/optional.hpp>
 #include <ferrugo/core/overloaded.hpp>
 #include <ferrugo/core/pipeline.hpp>
+#include <ferrugo/core/predicates.hpp>
 #include <ferrugo/core/ranges.hpp>
 #include <ferrugo/core/type_name.hpp>
 #include <ferrugo/core/type_traits.hpp>
 #include <iostream>
 #include <list>
 #include <map>
+#include <numeric>
 #include <optional>
 #include <sstream>
 #include <stdexcept>
@@ -20,12 +25,15 @@
 
 void run()
 {
+    using namespace std::string_literals;
+    using namespace std::string_view_literals;
+
     using namespace ferrugo;
 
     std::vector<int> a = { 1, 2, 3, 4 };
     const std::vector<double> b = { 1.5, 2.5, 3.5, 4.5 };
     const std::array<std::string, 2> c = { "AAA", "BBB" };
-    const auto r = core::all(core::ref_range(a), core::ref_range(b), core::ref_range(c));
+    const auto r = core::all(core::ref_range(a), core::ref_range(b), core::ref_range(c), core::owning_range(c));
     auto it = std::begin(r) + 2;
     --it;
     const auto print = core::println("{}");
@@ -41,7 +49,7 @@ void run()
 
 void print_error()
 {
-    static const auto format_error = ferrugo::core::format("Error: {}\n");
+    static const auto print_error = ferrugo::core::println(std::cerr, "Error: {}\n");
     using namespace ferrugo;
     try
     {
@@ -49,11 +57,12 @@ void print_error()
     }
     catch (const std::exception& ex)
     {
-        std::cerr << format_error(ex.what());
+        print_error(ex.what());
     }
     catch (...)
+
     {
-        std::cerr << format_error("UNKNOWN ERROR");
+        print_error("UNKNOWN ERROR");
     }
 }
 
