@@ -1,8 +1,9 @@
 #pragma once
 
-#include <ferrugo/core/type_traits.hpp>
 #include <ferrugo/core/format_utils.hpp>
+#include <ferrugo/core/type_traits.hpp>
 #include <functional>
+#include <variant>
 
 namespace ferrugo
 {
@@ -176,7 +177,8 @@ struct compound_fn
             static const auto name = Name{};
 
             os << "(" << name;
-            std::apply([&](const auto&... preds) { ((os << " " << ::ferrugo::core::safe_format(preds)), ...); }, item.m_preds);
+            std::apply(
+                [&](const auto&... preds) { ((os << " " << ::ferrugo::core::safe_format(preds)), ...); }, item.m_preds);
             os << ")";
             return os;
         }
