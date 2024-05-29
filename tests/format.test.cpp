@@ -40,11 +40,39 @@ TEST_CASE("format", "")
         equal_to("Alice has a cat."sv));
 }
 
+TEST_CASE("format - booolean", "")
+{
+    REQUIRE_THAT(  //
+        core::format("{}-{}")(true, false),
+        equal_to("true-false"sv));
+}
+
+TEST_CASE("format - char array", "")
+{
+    REQUIRE_THAT(  //
+        core::format("{}-{}")("ABC", "DEF"),
+        equal_to("ABC-DEF"sv));
+}
+
+TEST_CASE("format - string_view", "")
+{
+    REQUIRE_THAT(  //
+        core::format("{}-{}")("ABC"sv, "DEF"sv),
+        equal_to("ABC-DEF"sv));
+}
+
 TEST_CASE("format - a vector", "")
 {
     REQUIRE_THAT(  //
         core::format("{} has the following animals: {}.")("Alice", std::vector{ "a cat", "a dog" }),
         equal_to("Alice has the following animals: [a cat, a dog]."sv));
+}
+
+TEST_CASE("format - basic types", "")
+{
+    REQUIRE_THAT(  //
+        core::format("int={}, short={}, char={}, bool={}, float={}, double={}")(42, static_cast<short>(100), 'A', true, 3.14F, 3.14),
+        equal_to("int=42, short=100, char=A, bool=true, float=3.14, double=3.14"sv));
 }
 
 TEST_CASE("print", "")

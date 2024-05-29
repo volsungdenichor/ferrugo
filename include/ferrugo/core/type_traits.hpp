@@ -85,6 +85,15 @@ using is_assignable_impl = decltype(std::declval<T>() = std::declval<convertible
 template <bool C>
 using require = typename std::enable_if<C, int>::type;
 
+template<class T>
+struct remove_cvref
+{
+    using type = std::remove_cv_t<std::remove_reference_t<T>>;
+};
+
+template< class T >
+using remove_cvref_t = remove_cvref<T>::type;
+
 template <class...>
 struct always_false : std::false_type
 {
