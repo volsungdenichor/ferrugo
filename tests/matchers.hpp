@@ -1,6 +1,7 @@
 #pragma once
 
 #include <catch2/matchers/catch_matchers_templated.hpp>
+#include <sstream>
 #include <string_view>
 
 template <class Op>
