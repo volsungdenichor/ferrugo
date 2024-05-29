@@ -7,6 +7,7 @@
 #include <ferrugo/core/type_traits.hpp>
 #include <functional>
 #include <iostream>
+#include <memory>
 #include <sstream>
 #include <string_view>
 #include <variant>
@@ -225,9 +226,9 @@ public:
         for (const auto& action : m_actions)
         {
             std::visit(
-                ferrugo::core::overloaded{
-                    [&](const print_text& a) { write_to(format_ctx, a.text); },
-                    [&](const print_argument& a) { arguments.at(a.index).print(format_ctx, a.context); } },
+                ferrugo::core::overloaded{ [&](const print_text& a) { write_to(format_ctx, a.text); },
+                                           [&](const print_argument& a)
+                                           { arguments.at(a.index).print(format_ctx, a.context); } },
                 action);
         }
     }
