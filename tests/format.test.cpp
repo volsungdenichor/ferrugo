@@ -72,7 +72,7 @@ TEST_CASE("format - basic types", "")
 {
     REQUIRE_THAT(  //
         core::format("int={}, short={}, char={}, bool={}, float={}, double={}")(42, static_cast<short>(100), 'A', true, 3.14F, 3.14),
-        equal_to("int=42, short=100, char=A, bool=true, float=3.14, double=3.14"sv));
+        equal_to("int=42, short=100, char=A, bool=true, float=3.140000, double=3.140000"sv));
 }
 
 TEST_CASE("print", "")

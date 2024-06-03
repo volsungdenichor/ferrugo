@@ -435,6 +435,23 @@ struct ostream_formatter
     }
 };
 
+template <char... Fmt>
+struct sprintf_formatter
+{
+    void parse(const parse_context&)
+    {
+    }
+
+    template <class T>
+    void format(format_context& ctx, T item) const
+    {
+        static const char fmt[] = { '%', Fmt..., '\0' };
+        char buffer[64];
+        int chars_written = std::sprintf(buffer, fmt, item);
+        ctx.output().append(buffer, chars_written);
+    }
+};
+
 template <class T>
 struct formatter<T, std::enable_if_t<std::is_integral_v<T>>>
 {
@@ -449,8 +466,48 @@ struct formatter<T, std::enable_if_t<std::is_integral_v<T>>>
     }
 };
 
-template <class T>
-struct formatter<T, std::enable_if_t<std::is_floating_point_v<T>>> : ostream_formatter<T>
+template <>
+struct formatter<int> : sprintf_formatter<'d'>
+{
+};
+
+template <>
+struct formatter<long> : sprintf_formatter<'l', 'd'>
+{
+};
+
+template <>
+struct formatter<long long> : sprintf_formatter<'l', 'l', 'd'>
+{
+};
+
+template <>
+struct formatter<unsigned> : sprintf_formatter<'u'>
+{
+};
+
+template <>
+struct formatter<unsigned long> : sprintf_formatter<'l', 'u'>
+{
+};
+
+template <>
+struct formatter<unsigned long long> : sprintf_formatter<'l', 'l', 'u'>
+{
+};
+
+template <>
+struct formatter<float> : sprintf_formatter<'f'>
+{
+};
+
+template <>
+struct formatter<double> : sprintf_formatter<'f'>
+{
+};
+
+template <>
+struct formatter<long double> : sprintf_formatter<'L','f'>
 {
 };
 
