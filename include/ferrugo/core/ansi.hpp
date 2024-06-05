@@ -15,6 +15,113 @@ namespace ferrugo
 namespace core
 {
 
+struct multibyte
+{
+    std::array<char, 4> m_data;
+    std::size_t m_size;
+
+    multibyte() : m_data{}, m_size{ 0 }
+    {
+    }
+
+    multibyte(char32_t ch) : m_data{}, m_size{}
+    {
+        auto state = std::mbstate_t{};
+        m_size = std::c32rtomb(m_data.data(), ch, &state);
+        if (m_size == std::size_t(-1))
+            throw std::runtime_error{ "u32_to_mb: error in conversion" };
+    }
+
+    multibyte(const char* b, const char* e) : m_data{}, m_size{ std::size_t(e - b) }
+    {
+        assert(m_size <= 4);
+        std::copy(b, e, m_data.begin());
+    }
+
+    operator char32_t() const
+    {
+        auto result = char32_t{};
+        auto mb_state = std::mbstate_t{};
+        auto const error = std::mbrtoc32(&result, m_data.data(), 4, &mb_state);
+        if (error == std::size_t(-1))
+            throw std::runtime_error{ "mb_to_u32: bad byte sequence" };
+        if (error == std::size_t(-2))
+            throw std::runtime_error{ "mb_to_u32: incomplete byte sequence" };
+        return result;
+    }
+
+    std::size_t size() const
+    {
+        return m_size;
+    }
+
+    const char* begin() const
+    {
+        return m_data.data();
+    }
+
+    const char* end() const
+    {
+        return begin() + size();
+    }
+
+    friend std::ostream& operator<<(std::ostream& os, const multibyte& item)
+    {
+        for (std::size_t i = 0; i < item.m_size; ++i)
+        {
+            os << item.m_data[i];
+        }
+        return os;
+    }
+};
+
+struct multibyte_string : private std::vector<multibyte>
+{
+    using base_type = std::vector<multibyte>;
+
+    using base_type::empty;
+    using base_type::size;
+    using base_type::operator[];
+    using base_type::at;
+    using base_type::begin;
+    using base_type::end;
+
+    multibyte_string(const std::string& str)
+    {
+        std::setlocale(LC_ALL, "en_US.utf8");
+        char32_t c32;
+        const char* ptr = str.data();
+        const char* end = str.data() + str.size();
+        std::mbstate_t state{};
+        while (std::size_t rc = std::mbrtoc32(&c32, ptr, end - ptr, &state))
+        {
+            assert(rc != (std::size_t)-3);
+            if (rc == (std::size_t)-1)
+                break;
+            if (rc == (std::size_t)-2)
+                break;
+            this->emplace_back(ptr, ptr + rc);
+            ptr += rc;
+        }
+    }
+
+    operator std::string() const
+    {
+        std::stringstream ss;
+        ss << *this;
+        return ss.str();
+    }
+
+    friend std::ostream& operator<<(std::ostream& os, const multibyte_string& item)
+    {
+        for (const auto& mb : item)
+        {
+            os << mb;
+        }
+        return os;
+    }
+};
+
 enum class mode
 {
     none = 0,
@@ -304,20 +411,14 @@ struct glyph_style_t
     }
 };
 
+using character_t = multibyte;
+
 struct glyph_t
 {
-    std::string character = " ";
+    character_t character = character_t{ ' ' };
     glyph_style_t style = {};
 
-    glyph_t(std::string character, glyph_style_t style = {}) : character{ std::move(character) }, style{ std::move(style) }
-    {
-    }
-
-    glyph_t(const char* character, glyph_style_t style = {}) : glyph_t(std::string(character), std::move(style))
-    {
-    }
-
-    glyph_t(char character, glyph_style_t style = {}) : glyph_t(std::string(1, character), std::move(style))
+    glyph_t(character_t character, glyph_style_t style = {}) : character{ std::move(character) }, style{ std::move(style) }
     {
     }
 
@@ -371,6 +472,10 @@ struct area_t
 
         std::size_t to_index(location_t loc) const
         {
+            if (!((0 <= loc.x < m_extent.width) && (0 <= loc.y < m_extent.height)))
+            {
+                throw std::runtime_error{ "location out of bounds" };
+            }
             return m_extent.width * loc.y + loc.x;
         }
 
@@ -391,6 +496,10 @@ struct area_t
 
         std::size_t to_index(location_t loc) const
         {
+            if (!((0 <= loc.x < m_extent.width) && (0 <= loc.y < m_extent.height)))
+            {
+                throw std::runtime_error{ "location out of bounds" };
+            }
             return m_extent.width * loc.y + loc.x;
         }
 
@@ -488,26 +597,22 @@ struct buffer_t
         return *this;
     }
 
-    buffer_t& write(const std::string& character)
+    buffer_t& write(const multibyte& character)
     {
         m_os << character;
-        // m_os << "\033[91m" << character << "\033[0m";
         return *this;
     }
 
     buffer_t& new_line()
     {
         m_prev_style = {};
+        escape({ 0 });
         m_os << '\n';
         return *this;
     }
 
     void escape(const args_t& args)
     {
-        // m_os << "\033[30m"
-        //         " {"
-        //      << delimit(args, ",") << "} "
-        //      << "\033[0m";
         m_os << "\033[" << delimit(args, ";") << "m";
     }
 
@@ -589,10 +694,10 @@ struct glyph_style_applier_t
 inline glyph_style_applier_t operator|(glyph_style_applier_t lhs, glyph_style_applier_t rhs)
 {
     return glyph_style_applier_t{ [=](glyph_style_t& s)
-                                {
-                                    lhs(s);
-                                    rhs(s);
-                                } };
+                                  {
+                                      lhs(s);
+                                      rhs(s);
+                                  } };
 }
 
 inline glyph_style_t& operator|=(glyph_style_t& g, const glyph_style_applier_t& applier)
@@ -603,6 +708,26 @@ inline glyph_style_t& operator|=(glyph_style_t& g, const glyph_style_applier_t& 
 
 inline glyph_style_t operator|(glyph_style_t g, const glyph_style_applier_t& applier)
 {
+    applier(g);
+    return g;
+}
+
+inline glyph_t operator|(glyph_t g, const glyph_style_applier_t& applier)
+{
+    applier(g);
+    return g;
+}
+
+inline glyph_t operator|(character_t ch, const glyph_style_applier_t& applier)
+{
+    glyph_t g{ ch };
+    applier(g);
+    return g;
+}
+
+inline glyph_t operator|(const char* ch, const glyph_style_applier_t& applier)
+{
+    glyph_t g{ multibyte_string(ch)[0] };
     applier(g);
     return g;
 }

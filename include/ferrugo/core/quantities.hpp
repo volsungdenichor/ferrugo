@@ -147,9 +147,26 @@ struct value_t<T, Q, std::enable_if_t<is_quality<Q>{}>>
     {
     }
 
+    constexpr explicit operator bool() const
+    {
+        return static_cast<bool>(m_value);
+    }
+
     constexpr T get() const
     {
         return m_value;
+    }
+
+    template <class U>
+    constexpr value_t<U, Q> as() const
+    {
+        return value_t<U, Q>{ static_cast<U>(m_value) };
+    }
+
+    constexpr value_t& reset(value_t value)
+    {
+        m_value = value.get();
+        return *this;
     }
 
     friend std::ostream& operator<<(std::ostream& os, const value_t& item)
@@ -179,16 +196,46 @@ constexpr auto operator+(value_t<L, Q> lhs, value_t<R, Q> rhs) -> value_t<Res, Q
     return value_t<Res, Q>{ lhs.get() + rhs.get() };
 }
 
+template <class L, class R, class Q, class Res = std::invoke_result_t<std::plus<>, L, R>>
+constexpr auto operator+=(value_t<L, Q>& lhs, value_t<R, Q> rhs) -> value_t<L, Q>&
+{
+    return lhs.reset((lhs + rhs).template as<L>());
+}
+
 template <class L, class R, class Q, class Res = std::invoke_result_t<std::minus<>, L, R>>
 constexpr auto operator-(value_t<L, Q> lhs, value_t<R, Q> rhs) -> value_t<Res, Q>
 {
     return value_t<Res, Q>{ lhs.get() - rhs.get() };
 }
 
+template <class L, class R, class Q, class Res = std::invoke_result_t<std::minus<>, L, R>>
+constexpr auto operator-=(value_t<L, Q>& lhs, value_t<R, Q> rhs) -> value_t<L, Q>&
+{
+    return lhs.reset((lhs - rhs).template as<L>());
+}
+
 template <class L, class R, class QL, class QR, class Res = std::invoke_result_t<std::multiplies<>, L, R>>
 constexpr auto operator*(value_t<L, QL> lhs, value_t<R, QR> rhs) -> value_t<Res, mul_result_t<QL, QR>>
 {
     return value_t<Res, mul_result_t<QL, QR>>{ lhs.get() * rhs.get() };
+}
+
+template <class L, class R, class QR, class Res = std::invoke_result_t<std::minus<>, L, R>>
+constexpr auto operator*(L lhs, value_t<R, QR> rhs) -> value_t<Res, QR>
+{
+    return value_t<Res, QR>{ lhs * rhs.get() };
+}
+
+template <class L, class R, class QL, class Res = std::invoke_result_t<std::multiplies<>, L, R>>
+constexpr auto operator*(value_t<L, QL> lhs, R rhs) -> value_t<Res, QL>
+{
+    return rhs * lhs;
+}
+
+template <class L, class R, class QL, class Res = std::invoke_result_t<std::multiplies<>, L, R>>
+constexpr auto operator*=(value_t<L, QL>& lhs, R rhs) -> value_t<L, QL>&
+{
+    return lhs.reset((lhs * rhs).template as<L>());
 }
 
 template <class L, class R, class QL, class QR, class Res = std::invoke_result_t<std::divides<>, L, R>>
@@ -203,16 +250,10 @@ constexpr auto operator/(value_t<L, Q> lhs, value_t<R, Q> rhs) -> Res
     return lhs.get() / rhs.get();
 }
 
-template <class L, class R, class QR, class Res = std::invoke_result_t<std::minus<>, L, R>>
-constexpr auto operator*(L lhs, value_t<R, QR> rhs) -> value_t<Res, QR>
+template <class L, class R, class QL, class Res = std::invoke_result_t<std::divides<>, L, R>>
+constexpr auto operator/=(value_t<L, QL>& lhs, R rhs) -> value_t<L, QL>&
 {
-    return value_t<Res, QR>{ lhs * rhs.get() };
-}
-
-template <class L, class R, class QL, class Res = std::invoke_result_t<std::multiplies<>, L, R>>
-constexpr auto operator*(value_t<L, QL> lhs, R rhs) -> value_t<Res, QL>
-{
-    return rhs * lhs;
+    return lhs.reset((lhs / rhs).template as<L>());
 }
 
 template <class L, class R, class QL, class Res = std::invoke_result_t<std::divides<>, L, R>>

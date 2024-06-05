@@ -2,6 +2,8 @@
 
 #include <array>
 #include <cmath>
+#include <ferrugo/core/math.hpp>
+#include <ferrugo/core/optional.hpp>
 #include <functional>
 #include <iostream>
 #include <numeric>
@@ -370,6 +372,98 @@ bool operator!=(const matrix<T, Size>& lhs, const matrix<U, Size>& rhs)
     return !(lhs == rhs);
 }
 
+struct minor_fn
+{
+    template <class T, std::size_t R, std::size_t C>
+    auto operator()(const matrix<T, size<R, C>>& item, std::size_t row, std::size_t col) const
+        -> matrix<T, size<R - 1, C - 1>>
+    {
+        static_assert(R > 1, "minor: invalid row");
+        static_assert(C > 1, "minor: invalid col");
+
+        matrix<T, size<R - 1, C - 1>> result;
+
+        for (std::size_t r = 0; r < R - 1; ++r)
+        {
+            for (std::size_t c = 0; c < C - 1; ++c)
+            {
+                result[{ r, c }] = item[{ r + (r < row ? 0 : 1), c + (c < col ? 0 : 1) }];
+            }
+        }
+
+        return result;
+    }
+};
+
+static constexpr inline auto minor = minor_fn{};
+
+struct det_fn
+{
+    template <class T>
+    auto operator()(const square_matrix<T, 1>& item) const -> T
+    {
+        return item[{ 0, 0 }];
+    }
+
+    template <class T>
+    auto operator()(const square_matrix<T, 2>& item) const
+    {
+        return +item[{ 0, 0 }] * item[{ 1, 1 }] - item[{ 0, 1 }] * item[{ 1, 0 }];
+    }
+
+    template <class T>
+    auto operator()(const square_matrix<T, 3>& item) const
+    {
+        return +item[{ 0, 0 }] * item[{ 1, 1 }] * item[{ 2, 2 }] + item[{ 0, 1 }] * item[{ 1, 2 }] * item[{ 2, 0 }]
+               + item[{ 0, 2 }] * item[{ 1, 0 }] * item[{ 2, 1 }] - item[{ 0, 2 }] * item[{ 1, 1 }] * item[{ 2, 0 }]
+               - item[{ 0, 0 }] * item[{ 1, 2 }] * item[{ 2, 1 }] - item[{ 0, 1 }] * item[{ 1, 0 }] * item[{ 2, 2 }];
+    }
+
+    template <class T, std::size_t D>
+    auto operator()(const square_matrix<T, D>& item) const
+    {
+        using Res = decltype(item[{ 0, 0 }] * (*this)(minor(item, 0, 0)));
+        auto sum = Res{};
+
+        for (std::size_t i = 0; i < D; ++i)
+        {
+            sum += (i % 2 == 0 ? 1 : -1) * item[{ 0, i }] * (*this)(minor(item, 0, i));
+        }
+
+        return sum;
+    }
+};
+
+static constexpr inline auto det = det_fn{};
+
+struct invert_fn
+{
+    template <class T, std::size_t D>
+    auto operator()(const square_matrix<T, D>& value) const -> core::optional<square_matrix<T, D>>
+    {
+        auto d = det(value);
+
+        if (!d)
+        {
+            return {};
+        }
+
+        square_matrix<T, D> result;
+
+        for (std::size_t r = 0; r < D; ++r)
+        {
+            for (std::size_t c = 0; c < D; ++c)
+            {
+                result[{ c, r }] = T((r + c) % 2 == 0 ? 1 : -1) * det(minor(value, r, c)) / d;
+            }
+        }
+
+        return result;
+    }
+};
+
+static constexpr inline auto invert = invert_fn{};
+
 struct dot_fn
 {
     template <class T, class U, std::size_t D, class Res = std::invoke_result_t<std::multiplies<>, T, U>>
@@ -397,8 +491,7 @@ struct length_fn
     template <class T, std::size_t D>
     auto operator()(const vector<T, D>& item) const
     {
-        using std::sqrt;
-        return sqrt(norm(item));
+        return math::sqrt(norm(item));
     }
 };
 
@@ -413,7 +506,7 @@ struct normalize_fn
 
         if (len)
         {
-            item = item * expected / len;
+            item = item * (expected / len);
         }
 
         return item;
