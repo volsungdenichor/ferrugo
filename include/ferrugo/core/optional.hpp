@@ -220,6 +220,18 @@ constexpr bool operator!=(none_t, const optional<R>& rhs)
     return static_cast<bool>(rhs);
 }
 
+template <class T>
+struct optional_underlying_type;
+
+template <class T>
+using optional_underlying_type_t = typename optional_underlying_type<T>::type;
+
+template <class T>
+struct optional_underlying_type<optional<T>>
+{
+    using type = T;
+};
+
 }  // namespace core
 
 }  // namespace ferrugo

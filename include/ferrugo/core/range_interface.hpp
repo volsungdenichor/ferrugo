@@ -31,6 +31,11 @@ struct range_interface
     range_interface(const range_interface&) = default;
     range_interface(range_interface&&) = default;
 
+    const Impl& get_impl() const
+    {
+        return m_impl;
+    }
+
     iterator begin() const
     {
         return m_impl.begin();

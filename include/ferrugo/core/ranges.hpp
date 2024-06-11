@@ -4,3 +4,4 @@
 #include <ferrugo/core/ranges/forward_iterable.hpp>
 #include <ferrugo/core/ranges/iterator_range.hpp>
 #include <ferrugo/core/ranges/random_access_iterable.hpp>
+#include <ferrugo/core/ranges/sequence.hpp>
