@@ -4,6 +4,11 @@
 #include <sstream>
 #include <string_view>
 
+namespace matchers
+{
+
+namespace detail
+{
 template <class Op>
 struct compare_matcher
 {
@@ -50,11 +55,15 @@ struct elements_are_matcher
     }
 };
 
-static constexpr inline auto equal_to = compare_matcher<std::equal_to<>>{ "equal to" };
-static constexpr inline auto not_equal_to = compare_matcher<std::not_equal_to<>>{ "not equal to" };
-static constexpr inline auto less = compare_matcher<std::less<>>{ "less than" };
-static constexpr inline auto greater = compare_matcher<std::greater<>>{ "greater than" };
-static constexpr inline auto less_equal = compare_matcher<std::less_equal<>>{ "less than or equal to" };
-static constexpr inline auto greater_equal = compare_matcher<std::greater_equal<>>{ "greater than or equal to" };
+}  // namespace detail
 
-static constexpr inline auto elements_are = elements_are_matcher{};
+static constexpr inline auto equal_to = detail::compare_matcher<std::equal_to<>>{ "equal to" };
+static constexpr inline auto not_equal_to = detail::compare_matcher<std::not_equal_to<>>{ "not equal to" };
+static constexpr inline auto less = detail::compare_matcher<std::less<>>{ "less than" };
+static constexpr inline auto greater = detail::compare_matcher<std::greater<>>{ "greater than" };
+static constexpr inline auto less_equal = detail::compare_matcher<std::less_equal<>>{ "less than or equal to" };
+static constexpr inline auto greater_equal = detail::compare_matcher<std::greater_equal<>>{ "greater than or equal to" };
+
+static constexpr inline auto elements_are = detail::elements_are_matcher{};
+
+}  // namespace matchers

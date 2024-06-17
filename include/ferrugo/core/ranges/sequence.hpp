@@ -156,7 +156,7 @@ struct transform_maybe_fn
     };
 
     template <class Func>
-    auto operator()(Func&& func) const -> impl<std::decay_t<Func>>
+    auto operator()(Func&& func) const -> core::pipeline_t<impl<std::decay_t<Func>>>
     {
         return impl<std::decay_t<Func>>{ std::forward<Func>(func) };
     }
@@ -194,7 +194,7 @@ struct transform_fn
     };
 
     template <class Func>
-    auto operator()(Func&& func) const -> impl<std::decay_t<Func>>
+    auto operator()(Func&& func) const -> core::pipeline_t<impl<std::decay_t<Func>>>
     {
         return impl<std::decay_t<Func>>{ std::forward<Func>(func) };
     }
@@ -240,7 +240,7 @@ struct filter_fn
     };
 
     template <class Pred>
-    auto operator()(Pred&& pred) const -> impl<std::decay_t<Pred>>
+    auto operator()(Pred&& pred) const -> core::pipeline_t<impl<std::decay_t<Pred>>>
     {
         return impl<std::decay_t<Pred>>{ std::forward<Pred>(pred) };
     }
@@ -275,7 +275,7 @@ struct take_fn
         }
     };
 
-    auto operator()(std::ptrdiff_t count) const -> impl
+    auto operator()(std::ptrdiff_t count) const -> core::pipeline_t<impl>
     {
         return impl{ count };
     }
@@ -310,7 +310,7 @@ struct drop_fn
         }
     };
 
-    auto operator()(std::ptrdiff_t count) const -> impl
+    auto operator()(std::ptrdiff_t count) const -> core::pipeline_t<impl>
     {
         return impl{ count };
     }
@@ -354,7 +354,7 @@ struct step_fn
         }
     };
 
-    auto operator()(std::ptrdiff_t count) const -> impl
+    auto operator()(std::ptrdiff_t count) const -> core::pipeline_t<impl>
     {
         return impl{ count };
     }
@@ -392,7 +392,7 @@ struct take_while_fn
     };
 
     template <class Pred>
-    auto operator()(Pred&& pred) const -> impl<std::decay_t<Pred>>
+    auto operator()(Pred&& pred) const -> core::pipeline_t<impl<std::decay_t<Pred>>>
     {
         return impl<std::decay_t<Pred>>{ std::forward<Pred>(pred) };
     }
@@ -442,7 +442,7 @@ struct drop_while_fn
     };
 
     template <class Pred>
-    auto operator()(Pred&& pred) const -> impl<std::decay_t<Pred>>
+    auto operator()(Pred&& pred) const -> core::pipeline_t<impl<std::decay_t<Pred>>>
     {
         return impl<std::decay_t<Pred>>{ std::forward<Pred>(pred) };
     }
@@ -735,7 +735,7 @@ struct join_fn
         }
     };
 
-    auto operator()() const -> impl
+    auto operator()() const -> core::pipeline_t<impl>
     {
         return impl{};
     }
@@ -756,7 +756,7 @@ struct transform_join_fn
     };
 
     template <class Func>
-    auto operator()(Func&& func) const -> impl<std::decay_t<Func>>
+    auto operator()(Func&& func) const -> core::pipeline_t<impl<std::decay_t<Func>>>
     {
         return impl<std::decay_t<Func>>{ std::forward<Func>(func) };
     }

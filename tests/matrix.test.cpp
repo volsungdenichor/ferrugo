@@ -44,14 +44,14 @@ TEST_CASE("matrix negation", "[matrix]")
 {
     REQUIRE_THAT(
         (-matrix{ 1, 2, 11, 12 }),  //
-        equal_to(matrix{ -1, -2, -11, -12 }));
+        matchers::equal_to(matrix{ -1, -2, -11, -12 }));
 }
 
 TEST_CASE("matrix addition", "[matrix]")
 {
     REQUIRE_THAT(
         (matrix{ 1, 2, 11, 12 } + matrix{ 1, 1, 2, 2 }),  //
-        equal_to(matrix{ 2, 3, 13, 14 }));
+        matchers::equal_to(matrix{ 2, 3, 13, 14 }));
 }
 
 TEST_CASE("matrix addition assignment", "[matrix]")
@@ -59,14 +59,14 @@ TEST_CASE("matrix addition assignment", "[matrix]")
     matrix m{ 1, 2, 11, 12 };
     REQUIRE_THAT(
         (m += matrix{ 1, 1, 1, 1 }),  //
-        equal_to(matrix{ 2, 3, 12, 13 }));
+        matchers::equal_to(matrix{ 2, 3, 12, 13 }));
 }
 
 TEST_CASE("matrix subtraction", "[matrix]")
 {
     REQUIRE_THAT(
         (matrix{ 1, 2, 11, 12 } - matrix{ 1, 1, 2, 2 }),  //
-        equal_to(matrix{ 0, 1, 9, 10 }));
+        matchers::equal_to(matrix{ 0, 1, 9, 10 }));
 }
 
 TEST_CASE("matrix subtraction assignment", "[matrix]")
@@ -74,48 +74,47 @@ TEST_CASE("matrix subtraction assignment", "[matrix]")
     matrix m{ 1, 2, 11, 12 };
     REQUIRE_THAT(
         (m -= matrix{ 1, 1, 1, 1 }),  //
-        equal_to(matrix{ 0, 1, 10, 11 }));
+        matchers::equal_to(matrix{ 0, 1, 10, 11 }));
 }
 
 TEST_CASE("matrix-matrix multiplication", "[matrix]")
 {
     REQUIRE_THAT(
         (matrix{ 1, 2, 3, 4 } * matrix{ 5, 6, 7, 8 }),  //
-        equal_to(matrix{ 19, 22, 43, 50 }));
+        matchers::equal_to(matrix{ 19, 22, 43, 50 }));
 }
 
 TEST_CASE("matrix-scalar multiplication", "[matrix]")
 {
     REQUIRE_THAT(
         (matrix{ 1, 2, 3, 4 } * 2),  //
-        equal_to(matrix{ 2, 4, 6, 8 }));
+        matchers::equal_to(matrix{ 2, 4, 6, 8 }));
 
     REQUIRE_THAT(
         (2 * matrix{ 1, 2, 3, 4 }),  //
-        equal_to(matrix{ 2, 4, 6, 8 }));
+        matchers::equal_to(matrix{ 2, 4, 6, 8 }));
 }
 
 TEST_CASE("matrix-scalar division", "[matrix]")
 {
     REQUIRE_THAT(
         (matrix{ 3, 6, -3, -9 } / 3),  //
-        equal_to(matrix{ 1, 2, -1, -3 }));
+        matchers::equal_to(matrix{ 1, 2, -1, -3 }));
 }
 
 TEST_CASE("vector length", "[vector]")
 {
-    REQUIRE_THAT((core::length(core::vector_2d<float>{ 1, 0 })), equal_to(1.F));
-    REQUIRE_THAT(
-        (core::length(core::vector_2d<float>{ 1, 1 })), Catch::Matchers::WithinAbs(1.41421F, 0.001F));
-    REQUIRE_THAT((core::length(core::vector_2d<float>{ 0, 1 })), equal_to(1.F));
+    REQUIRE_THAT((core::length(core::vector_2d<float>{ 1, 0 })), matchers::equal_to(1.F));
+    REQUIRE_THAT((core::length(core::vector_2d<float>{ 1, 1 })), Catch::Matchers::WithinAbs(1.41421F, 0.001F));
+    REQUIRE_THAT((core::length(core::vector_2d<float>{ 0, 1 })), matchers::equal_to(1.F));
 }
 
 TEST_CASE("vector unit", "[vector]")
 {
-    REQUIRE_THAT(                                                        //
+    REQUIRE_THAT(                                      //
         (core::unit(core::vector_2d<float>{ 2, 0 })),  //
         vector_equal(core::vector_2d<float>{ 1, 0 }));
-    REQUIRE_THAT(                                                        //
+    REQUIRE_THAT(                                      //
         (core::unit(core::vector_2d<float>{ 2, 2 })),  //
-        vector_equal(core::vector_2d<float>{ 0.707107F, 0.707107F  }));
+        vector_equal(core::vector_2d<float>{ 0.707107F, 0.707107F }));
 }
