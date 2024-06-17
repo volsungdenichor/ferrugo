@@ -1,6 +1,6 @@
 #pragma once
 
-#include <catch2/matchers/catch_matchers_templated.hpp>
+#include <catch2/matchers/catch_matchers_all.hpp>
 #include <sstream>
 #include <string_view>
 
@@ -40,9 +40,21 @@ struct compare_matcher
     }
 };
 
+struct elements_are_matcher
+{
+    template <class T, class... Tail>
+    auto operator()(T head, Tail&&... tail) const
+    {
+        std::vector<T> v = { head, std::forward<Tail>(tail)... };
+        return Catch::Matchers::RangeEquals(std::move(v));
+    }
+};
+
 static constexpr inline auto equal_to = compare_matcher<std::equal_to<>>{ "equal to" };
 static constexpr inline auto not_equal_to = compare_matcher<std::not_equal_to<>>{ "not equal to" };
 static constexpr inline auto less = compare_matcher<std::less<>>{ "less than" };
 static constexpr inline auto greater = compare_matcher<std::greater<>>{ "greater than" };
 static constexpr inline auto less_equal = compare_matcher<std::less_equal<>>{ "less than or equal to" };
 static constexpr inline auto greater_equal = compare_matcher<std::greater_equal<>>{ "greater than or equal to" };
+
+static constexpr inline auto elements_are = elements_are_matcher{};

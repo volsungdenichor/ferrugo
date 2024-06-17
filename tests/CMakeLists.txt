@@ -4,6 +4,7 @@ set(UNIT_TEST_SOURCE_LIST
   matrix.test.cpp
   format.test.cpp
   predicates.test.cpp
+  sequence.test.cpp
 )
 
 Include(FetchContent)
